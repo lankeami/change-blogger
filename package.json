@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "fetch": "node dist/fetch.js",
-    "generate": "echo 'Phase 2: site generation not yet implemented'",
+    "generate": "node dist/generate.js",
+    "build:site": "npm run build && npm run fetch && npm run generate",
     "test": "vitest run"
   },
   "license": "MIT",
