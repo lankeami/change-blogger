@@ -1,4 +1,4 @@
-import type { SiteData, Config, Release } from './types';
+import type { SiteData, Config, Release } from './types.js';
 
 export function escapeXml(str: string): string {
   return str

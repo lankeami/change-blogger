@@ -1,5 +1,6 @@
 import { marked } from "marked";
 import { Eta } from "eta";
+import type { AtomFeed } from "./feed.js";
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ export function renderMarkdown(markdown: string): string {
 
 export interface Renderer {
   renderPage(template: string, data: Record<string, unknown>): string;
+  renderFeed(feedData: AtomFeed): string;
 }
 
 export function createRenderer(templatesDir: string): Renderer {
@@ -67,6 +69,9 @@ export function createRenderer(templatesDir: string): Renderer {
     renderPage(template: string, data: Record<string, unknown>): string {
       const body = eta.render(`./${template}`, data) as string;
       return eta.render("./layout", { ...data, body }) as string;
+    },
+    renderFeed(feedData: AtomFeed): string {
+      return eta.render("./feed", feedData) as string;
     },
   };
 }
