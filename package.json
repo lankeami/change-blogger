@@ -1,0 +1,23 @@
+{
+  "name": "change-blogger",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Static changelog website that aggregates GitHub release notes across an organization",
+  "scripts": {
+    "build": "tsc",
+    "fetch": "node dist/fetch.js",
+    "generate": "echo 'Phase 2: site generation not yet implemented'",
+    "test": "vitest run"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^21.1.1",
+    "eta": "^4.6.0",
+    "marked": "^18.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.8"
+  }
+}
