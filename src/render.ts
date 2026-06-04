@@ -1,4 +1,5 @@
 import { marked } from "marked";
+import { Eta } from "eta";
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -51,4 +52,21 @@ export function getRelativeDate(publishedAt: string, now?: Date): string {
 export function renderMarkdown(markdown: string): string {
   if (!markdown) return "";
   return marked.parse(markdown) as string;
+}
+
+// ── Template renderer ────────────────────────────────────────────────────────
+
+export interface Renderer {
+  renderPage(template: string, data: Record<string, unknown>): string;
+}
+
+export function createRenderer(templatesDir: string): Renderer {
+  const eta = new Eta({ views: templatesDir, autoEscape: true });
+
+  return {
+    renderPage(template: string, data: Record<string, unknown>): string {
+      const body = eta.render(`./${template}`, data) as string;
+      return eta.render("./layout", { ...data, body }) as string;
+    },
+  };
 }
