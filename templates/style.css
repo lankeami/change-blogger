@@ -1,0 +1,253 @@
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f8f9fb;
+  --color-text: #1a1a2e;
+  --color-text-secondary: #6b7280;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-light: #dbeafe;
+  --color-border: #e5e7eb;
+  --color-code-bg: #f3f4f6;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+  --max-width: 960px;
+  --radius: 8px;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.repo-nav {
+  background: var(--color-text);
+  color: #fff;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  height: 56px;
+}
+
+.nav-title {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.125rem;
+  white-space: nowrap;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-links::-webkit-scrollbar { display: none; }
+
+.nav-links a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius);
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-links a:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.nav-links a.active { color: #fff; background: rgba(255, 255, 255, 0.15); }
+
+.content {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.page-heading {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+.time-bucket { margin-bottom: 2.5rem; }
+
+.bucket-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-accent);
+  margin-bottom: 1rem;
+}
+
+.release-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.release-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.repo-badge {
+  display: inline-block;
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.repo-badge:hover { background: var(--color-accent); color: #fff; }
+
+.release-tag {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  background: var(--color-code-bg);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.release-date {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-left: auto;
+}
+
+.release-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.release-name a { color: var(--color-text); text-decoration: none; }
+.release-name a:hover { color: var(--color-accent); }
+
+.release-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.avatar { border-radius: 50%; }
+
+.author-link {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.author-link:hover { color: var(--color-accent); }
+
+.release-body {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-text);
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+
+.release-body h1, .release-body h2, .release-body h3 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.release-body h1 { font-size: 1.25rem; }
+.release-body h2 { font-size: 1.125rem; }
+.release-body h3 { font-size: 1rem; }
+.release-body p { margin-bottom: 0.75rem; }
+.release-body ul, .release-body ol { margin-bottom: 0.75rem; padding-left: 1.5rem; }
+.release-body li { margin-bottom: 0.25rem; }
+
+.release-body code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--color-code-bg);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+}
+
+.release-body pre {
+  background: var(--color-code-bg);
+  border-radius: var(--radius);
+  padding: 1rem;
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.release-body pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.release-body a { color: var(--color-accent); text-decoration: none; }
+.release-body a:hover { text-decoration: underline; }
+
+.release-body blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 1rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.release-body table { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+.release-body th, .release-body td { border: 1px solid var(--color-border); padding: 0.5rem 0.75rem; text-align: left; }
+.release-body th { background: var(--color-code-bg); font-weight: 600; }
+
+.repo-header { margin-bottom: 2rem; }
+.repo-description { font-size: 1.0625rem; color: var(--color-text-secondary); margin-bottom: 0.5rem; }
+.github-link { font-size: 0.875rem; color: var(--color-accent); text-decoration: none; }
+.github-link:hover { text-decoration: underline; }
+
+.site-footer {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 640px) {
+  .nav-inner { flex-direction: column; height: auto; padding: 0.75rem 0; gap: 0.5rem; }
+  .content { padding: 1.5rem 1rem; }
+  .release-header { flex-direction: column; align-items: flex-start; gap: 0.375rem; }
+  .release-date { margin-left: 0; }
+}
