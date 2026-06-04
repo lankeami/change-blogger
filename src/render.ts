@@ -1,3 +1,5 @@
+import { marked } from "marked";
+
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
 export type TimeBucket = "this-week" | "last-week" | "older";
@@ -42,4 +44,11 @@ export function getRelativeDate(publishedAt: string, now?: Date): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+// ── Markdown renderer ────────────────────────────────────────────────────────
+
+export function renderMarkdown(markdown: string): string {
+  if (!markdown) return "";
+  return marked.parse(markdown) as string;
 }
