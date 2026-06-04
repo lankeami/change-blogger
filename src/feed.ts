@@ -1,4 +1,7 @@
+import fs from 'fs';
+import path from 'path';
 import type { SiteData, Config, Release } from './types.js';
+import type { Renderer } from './render.js';
 
 export function escapeXml(str: string): string {
   return str
@@ -82,4 +85,25 @@ export function generateRepoFeed(
       author: { name: release.author.login },
     })),
   };
+}
+
+export function writeFeedFiles(
+  siteData: SiteData,
+  config: Config,
+  outputDir: string,
+  renderer: Renderer
+): void {
+  const globalFeed = generateGlobalFeed(siteData, config);
+  const globalFeedXml = renderer.renderFeed(globalFeed);
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(path.join(outputDir, 'feed.xml'), globalFeedXml);
+
+  siteData.repos.forEach(repo => {
+    if (repo.releases.length === 0) return;
+    const repoFeed = generateRepoFeed(repo.name, repo.releases, config);
+    const repoFeedXml = renderer.renderFeed(repoFeed);
+    const repoDir = path.join(outputDir, repo.name);
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.writeFileSync(path.join(repoDir, 'feed.xml'), repoFeedXml);
+  });
 }

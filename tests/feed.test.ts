@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { escapeXml, generateGlobalFeed, generateRepoFeed } from '../src/feed';
+import { describe, it, expect, afterEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import { escapeXml, generateGlobalFeed, generateRepoFeed, writeFeedFiles } from '../src/feed';
+import { createRenderer } from '../src/render';
 import type { SiteData, Config, Release } from '../src/types';
 
 describe('escapeXml', () => {
@@ -248,5 +251,83 @@ describe('generateRepoFeed', () => {
   it('entry includes author login', () => {
     const feed = generateRepoFeed('api', mockReleases, mockConfig);
     expect(feed.entries[0].author.name).toBe('bob');
+  });
+});
+
+describe('writeFeedFiles', () => {
+  const tmpDir = 'test-output-feeds';
+
+  const mockConfig: Config = {
+    org: 'test-org',
+    outputDir: tmpDir,
+    siteTitle: 'Test Changelog',
+    siteUrl: 'https://example.com',
+  };
+
+  const mockSiteData: SiteData = {
+    org: 'test-org',
+    generatedAt: '2026-06-04T10:00:00Z',
+    repos: [
+      {
+        name: 'api',
+        url: 'https://github.com/test-org/api',
+        description: 'API',
+        releases: [
+          {
+            id: 123,
+            repoName: 'api',
+            repoUrl: 'https://github.com/test-org/api',
+            tagName: 'v1.0.0',
+            name: 'Initial',
+            body: 'First',
+            htmlUrl: 'https://github.com/test-org/api/releases/tag/v1.0.0',
+            publishedAt: '2026-06-04T10:00:00Z',
+            isDraft: false,
+            isPrerelease: false,
+            author: { login: 'alice', avatarUrl: 'https://...', htmlUrl: 'https://...' },
+          },
+        ],
+      },
+    ],
+  };
+
+  afterEach(() => {
+    if (fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
+  it('writes global feed to feed.xml', () => {
+    const renderer = createRenderer('templates');
+    writeFeedFiles(mockSiteData, mockConfig, tmpDir, renderer);
+
+    const globalFeedPath = path.join(tmpDir, 'feed.xml');
+    expect(fs.existsSync(globalFeedPath)).toBe(true);
+
+    const content = fs.readFileSync(globalFeedPath, 'utf-8');
+    expect(content).toContain('<?xml version="1.0"');
+    expect(content).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+    expect(content).toContain('Test Changelog');
+  });
+
+  it('writes per-repo feed to {repo}/feed.xml', () => {
+    const renderer = createRenderer('templates');
+    writeFeedFiles(mockSiteData, mockConfig, tmpDir, renderer);
+
+    const repoFeedPath = path.join(tmpDir, 'api', 'feed.xml');
+    expect(fs.existsSync(repoFeedPath)).toBe(true);
+
+    const content = fs.readFileSync(repoFeedPath, 'utf-8');
+    expect(content).toContain('<title><![CDATA[api]]></title>');
+  });
+
+  it('feed XML contains entry data', () => {
+    const renderer = createRenderer('templates');
+    writeFeedFiles(mockSiteData, mockConfig, tmpDir, renderer);
+
+    const content = fs.readFileSync(path.join(tmpDir, 'feed.xml'), 'utf-8');
+    expect(content).toContain('<entry>');
+    expect(content).toContain('api v1.0.0');
+    expect(content).toContain('2026-06-04T10:00:00Z');
   });
 });
