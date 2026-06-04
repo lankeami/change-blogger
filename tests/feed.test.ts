@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { escapeXml, generateGlobalFeed } from '../src/feed';
-import type { SiteData, Config } from '../src/types';
+import { escapeXml, generateGlobalFeed, generateRepoFeed } from '../src/feed';
+import type { SiteData, Config, Release } from '../src/types';
 
 describe('escapeXml', () => {
   it('escapes less-than sign', () => {
@@ -178,5 +178,75 @@ describe('generateGlobalFeed', () => {
     };
     const feed = generateGlobalFeed(largeData, mockConfig);
     expect(feed.entries).toHaveLength(50);
+  });
+});
+
+describe('generateRepoFeed', () => {
+  const mockConfig: Config = {
+    org: 'test-org',
+    outputDir: 'site',
+    siteTitle: 'Test Changelog',
+    siteUrl: 'https://example.com',
+  };
+
+  const mockReleases: Release[] = [
+    {
+      id: 123,
+      repoName: 'api',
+      repoUrl: 'https://github.com/test-org/api',
+      tagName: 'v1.0.0',
+      name: 'Initial release',
+      body: 'First release',
+      htmlUrl: 'https://github.com/test-org/api/releases/tag/v1.0.0',
+      publishedAt: '2026-06-04T10:00:00Z',
+      isDraft: false,
+      isPrerelease: false,
+      author: { login: 'alice', avatarUrl: 'https://...', htmlUrl: 'https://...' },
+    },
+    {
+      id: 124,
+      repoName: 'api',
+      repoUrl: 'https://github.com/test-org/api',
+      tagName: 'v1.1.0',
+      name: 'Bug fixes',
+      body: 'Fixed bugs',
+      htmlUrl: 'https://github.com/test-org/api/releases/tag/v1.1.0',
+      publishedAt: '2026-06-05T10:00:00Z',
+      isDraft: false,
+      isPrerelease: false,
+      author: { login: 'bob', avatarUrl: 'https://...', htmlUrl: 'https://...' },
+    },
+  ];
+
+  it('returns feed with repo name as title', () => {
+    const feed = generateRepoFeed('api', mockReleases, mockConfig);
+    expect(feed.title).toBe('api');
+  });
+
+  it('returns feed with repo-scoped ID', () => {
+    const feed = generateRepoFeed('api', mockReleases, mockConfig);
+    expect(feed.id).toBe('urn:change-blogger:test-org:api');
+  });
+
+  it('returns feed with updated timestamp of newest release', () => {
+    const feed = generateRepoFeed('api', mockReleases, mockConfig);
+    expect(feed.updated).toBe('2026-06-05T10:00:00Z');
+  });
+
+  it('includes repo-specific link', () => {
+    const feed = generateRepoFeed('api', mockReleases, mockConfig);
+    expect(feed.link).toBe('https://example.com/api');
+  });
+
+  it('includes all releases for repo sorted by date descending', () => {
+    const feed = generateRepoFeed('api', mockReleases, mockConfig);
+    expect(feed.entries).toHaveLength(2);
+    expect(feed.entries[0].title).toBe('api v1.1.0');
+    expect(feed.entries[1].title).toBe('api v1.0.0');
+  });
+
+  it('entry includes author login', () => {
+    const feed = generateRepoFeed('api', mockReleases, mockConfig);
+    expect(feed.entries[0].author.name).toBe('bob');
   });
 });

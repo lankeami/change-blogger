@@ -1,4 +1,4 @@
-import type { SiteData, Config } from './types';
+import type { SiteData, Config, Release } from './types';
 
 export function escapeXml(str: string): string {
   return str
@@ -52,6 +52,33 @@ export function generateGlobalFeed(
       updated: release.publishedAt,
       summary: release.name,
       link: `${config.siteUrl}/${release.repoName}#release-${release.tagName}`,
+      author: { name: release.author.login },
+    })),
+  };
+}
+
+export function generateRepoFeed(
+  repoName: string,
+  releases: Release[],
+  config: Config
+): AtomFeed {
+  const sorted = [...releases]
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    .slice(0, 50);
+
+  return {
+    title: repoName,
+    id: `urn:change-blogger:${config.org}:${repoName}`,
+    updated: sorted[0]?.publishedAt || new Date().toISOString(),
+    link: `${config.siteUrl}/${repoName}`,
+    generator: 'change-blogger v0.1.0',
+    entries: sorted.map(release => ({
+      title: `${repoName} ${release.tagName}`,
+      id: `urn:change-blogger:${config.org}:${repoName}:${release.id}`,
+      published: release.publishedAt,
+      updated: release.publishedAt,
+      summary: release.name,
+      link: `${config.siteUrl}/${repoName}#release-${release.tagName}`,
       author: { name: release.author.login },
     })),
   };
