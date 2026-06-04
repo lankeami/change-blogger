@@ -1,0 +1,27 @@
+<header class="repo-header">
+  <h1 class="page-heading"><%= it.repo.name %></h1>
+  <% if (it.repo.description) { %>
+    <p class="repo-description"><%= it.repo.description %></p>
+  <% } %>
+  <a href="<%= it.repo.url %>" class="github-link">View on GitHub &rarr;</a>
+</header>
+<div class="releases-list">
+  <% it.releases.forEach(function(release) { %>
+    <article class="release-card">
+      <div class="release-header">
+        <span class="release-tag"><%= release.tagName %></span>
+        <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
+      </div>
+      <h3 class="release-name">
+        <a href="<%= release.htmlUrl %>"><%= release.name || release.tagName %></a>
+      </h3>
+      <div class="release-meta">
+        <img src="<%= release.author.avatarUrl %>&s=32" alt="" class="avatar" width="20" height="20">
+        <a href="<%= release.author.htmlUrl %>" class="author-link"><%= release.author.login %></a>
+      </div>
+      <% if (release.bodyHtml) { %>
+        <div class="release-body"><%~ release.bodyHtml %></div>
+      <% } %>
+    </article>
+  <% }) %>
+</div>

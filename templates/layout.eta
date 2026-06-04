@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= it.siteTitle %><% if (it.pageTitle) { %> | <%= it.pageTitle %><% } %></title>
+  <link rel="stylesheet" href="<%= it.basePath %>style.css">
+</head>
+<body>
+  <nav class="repo-nav">
+    <div class="nav-inner">
+      <a href="<%= it.basePath || './' %>" class="nav-title"><%= it.siteTitle %></a>
+      <ul class="nav-links">
+        <% it.repos.forEach(function(repo) { %>
+          <li>
+            <a href="<%= it.basePath %><%= repo.name %>/"
+               <% if (it.activeRepo === repo.name) { %>class="active"<% } %>>
+              <%= repo.name %>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+  </nav>
+  <main class="content">
+    <%~ it.body %>
+  </main>
+  <footer class="site-footer">
+    <p>Generated at <%= it.generatedAt %></p>
+  </footer>
+</body>
+</html>
