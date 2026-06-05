@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="<%= it.basePath %>style.css">
 </head>
 <body>
-  <nav class="repo-nav">
-    <div class="nav-inner">
+  <div class="app-layout">
+    <nav class="sidebar">
       <a href="<%= it.basePath || './' %>" class="nav-title"><%= it.siteTitle %></a>
       <ul class="nav-links">
-        <% it.repos.forEach(function(repo) { %>
+        <% it.repos.slice().sort(function(a, b) { return a.name.localeCompare(b.name); }).forEach(function(repo) { %>
           <li>
             <a href="<%= it.basePath %><%= repo.name %>/"
                <% if (it.activeRepo === repo.name) { %>class="active"<% } %>>
@@ -20,13 +20,15 @@
           </li>
         <% }) %>
       </ul>
+    </nav>
+    <div class="main-area">
+      <main class="content">
+        <%~ it.body %>
+      </main>
+      <footer class="site-footer">
+        <p>Generated at <%= it.generatedAt %></p>
+      </footer>
     </div>
-  </nav>
-  <main class="content">
-    <%~ it.body %>
-  </main>
-  <footer class="site-footer">
-    <p>Generated at <%= it.generatedAt %></p>
-  </footer>
+  </div>
 </body>
 </html>
