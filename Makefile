@@ -1,3 +1,6 @@
+-include .env
+export
+
 .PHONY: clean build fetch generate site serve test
 
 clean:
