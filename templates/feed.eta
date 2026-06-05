@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title><![CDATA[<%~ it.title %>]]></title>
+  <id><%~ it.id %></id>
+  <updated><%~ it.updated %></updated>
+  <link href="<%~ it.link %>" rel="alternate" />
+  <generator><%~ it.generator %></generator>
+
+  <% it.entries.forEach(entry => { %>
+  <entry>
+    <title><![CDATA[<%~ entry.title %>]]></title>
+    <id><%~ entry.id %></id>
+    <published><%~ entry.published %></published>
+    <updated><%~ entry.updated %></updated>
+    <summary><![CDATA[<%~ entry.summary %>]]></summary>
+    <link href="<%~ entry.link %>" rel="alternate" />
+    <author>
+      <name><%~ entry.author.name %></name>
+    </author>
+  </entry>
+  <% }); %>
+</feed>

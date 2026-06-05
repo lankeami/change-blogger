@@ -9,6 +9,7 @@ import {
   type TimeBucket,
 } from "./render.js";
 import type { SiteData, Release, ReleaseCardData, TimeBucketData } from "./types.js";
+import { writeFeedFiles } from "./feed.js";
 
 const BUCKET_ORDER: TimeBucket[] = ["this-week", "last-week", "older"];
 const BUCKET_LABELS: Record<TimeBucket, string> = {
@@ -114,8 +115,17 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
   const cssSource = join(templatesDir, "style.css");
   copyFileSync(cssSource, join(outputDir, "style.css"));
 
+  // --- Atom feeds ---
+  const feedConfig = {
+    org: siteData.org,
+    outputDir,
+    siteTitle,
+    siteUrl: options.siteUrl,
+  };
+  writeFeedFiles(siteData, feedConfig, outputDir, renderer);
+
   console.log(
-    `Generated site: index + ${siteData.repos.length} repo pages → ${outputDir}/`,
+    `Generated site: index + ${siteData.repos.length} repo pages + feeds → ${outputDir}/`,
   );
 }
 

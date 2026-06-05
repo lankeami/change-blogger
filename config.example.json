@@ -1,0 +1,8 @@
+{
+  "org": "bollandbranch",
+  "outputDir": "site",
+  "siteTitle": "Changelog",
+  "siteUrl": "https://bollandbranch.github.io/change-blogger",
+  "excludeRepos": [],
+  "includeDraftReleases": false
+}
