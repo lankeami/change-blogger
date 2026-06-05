@@ -153,4 +153,31 @@ describe("generateSite", () => {
     const html = readFileSync(join(outputDir, "index.html"), "utf-8");
     expect(html).toContain("Older");
   });
+
+  it("generates global feed.xml", () => {
+    const feedPath = join(outputDir, "feed.xml");
+    expect(existsSync(feedPath)).toBe(true);
+    const xml = readFileSync(feedPath, "utf-8");
+    expect(xml).toContain('<?xml version="1.0"');
+    expect(xml).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+    expect(xml).toContain("Test Changelog");
+  });
+
+  it("global feed contains entries from all repos", () => {
+    const xml = readFileSync(join(outputDir, "feed.xml"), "utf-8");
+    expect(xml).toContain("api-service v2.1.0");
+    expect(xml).toContain("web-app v1.5.0");
+  });
+
+  it("generates per-repo feed.xml files", () => {
+    expect(existsSync(join(outputDir, "api-service", "feed.xml"))).toBe(true);
+    expect(existsSync(join(outputDir, "web-app", "feed.xml"))).toBe(true);
+  });
+
+  it("per-repo feed is scoped to that repo", () => {
+    const xml = readFileSync(join(outputDir, "api-service", "feed.xml"), "utf-8");
+    expect(xml).toContain("<title><![CDATA[api-service]]></title>");
+    expect(xml).toContain("api-service v2.1.0");
+    expect(xml).toContain("api-service v2.0.0");
+  });
 });
