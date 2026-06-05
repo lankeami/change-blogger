@@ -111,9 +111,12 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
     writeFileSync(join(repoDir, "index.html"), repoHtml);
   }
 
-  // --- Copy stylesheet ---
+  // --- Copy stylesheet and static files ---
   const cssSource = join(templatesDir, "style.css");
   copyFileSync(cssSource, join(outputDir, "style.css"));
+
+  const robotsSource = join(templatesDir, "robots.txt");
+  copyFileSync(robotsSource, join(outputDir, "robots.txt"));
 
   // --- Atom feeds ---
   const feedConfig = {
