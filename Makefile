@@ -1,7 +1,9 @@
 -include .env
 export
 
-.PHONY: clean build fetch generate site serve test
+.PHONY: clean build fetch generate site serve test local report
+
+local: clean site serve
 
 clean:
 	rm -rf dist site
@@ -18,7 +20,10 @@ generate: build
 site: build fetch generate
 
 serve:
-	python3 -m http.server 8080 -d site
+	python3 -m http.server $(or $(PORT),8000) -d site
 
 test:
 	npx vitest run
+
+report: site
+	open site/index.html
