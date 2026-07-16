@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= it.siteTitle %> | Daily Report</title>
+  <style><%~ it.css %></style>
+</head>
+<body>
+  <div class="app-layout">
+    <nav class="sidebar">
+      <a href="#" class="nav-title"><%= it.siteTitle %></a>
+      <ul class="nav-links">
+        <% it.repos.forEach(function(repo) { %>
+          <li>
+            <a href="#<%= repo.name %>" data-repo="<%= repo.name %>">
+              <%= repo.name %>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </nav>
+    <div class="main-area">
+      <main class="content">
+        <section id="view-all" class="report-section">
+          <h1 class="page-heading">Recent Releases</h1>
+          <% it.buckets.forEach(function(bucket) { %>
+            <% if (bucket.releases.length > 0) { %>
+              <section class="time-bucket">
+                <h2 class="bucket-heading"><%= bucket.label %></h2>
+                <% bucket.releases.forEach(function(release) { %>
+                  <article class="release-card">
+                    <div class="release-header">
+                      <a href="#<%= release.repoName %>" class="repo-badge"><%= release.repoName %></a>
+                      <span class="release-tag"><%= release.tagName %></span>
+                      <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
+                    </div>
+                    <h3 class="release-name">
+                      <a href="<%= release.htmlUrl %>"><%= release.name || release.tagName %></a>
+                    </h3>
+                    <div class="release-meta">
+                      <img src="<%= release.author.avatarUrl %>&s=32" alt="" class="avatar" width="20" height="20">
+                      <a href="<%= release.author.htmlUrl %>" class="author-link"><%= release.author.login %></a>
+                    </div>
+                    <% if (release.bodyHtml) { %>
+                      <div class="release-body"><%~ release.bodyHtml %></div>
+                    <% } %>
+                  </article>
+                <% }) %>
+              </section>
+            <% } %>
+          <% }) %>
+        </section>
+        <% it.repoSections.forEach(function(repoData) { %>
+          <section id="repo-<%= repoData.repo.name %>" class="report-section" style="display: none">
+            <header class="repo-header">
+              <h1 class="page-heading"><%= repoData.repo.name %></h1>
+              <% if (repoData.repo.description) { %>
+                <p class="repo-description"><%= repoData.repo.description %></p>
+              <% } %>
+              <a href="<%= repoData.repo.url %>" class="github-link">View on GitHub &rarr;</a>
+            </header>
+            <div class="releases-list">
+              <% repoData.releases.forEach(function(release) { %>
+                <article class="release-card">
+                  <div class="release-header">
+                    <span class="release-tag"><%= release.tagName %></span>
+                    <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
+                  </div>
+                  <h3 class="release-name">
+                    <a href="<%= release.htmlUrl %>"><%= release.name || release.tagName %></a>
+                  </h3>
+                  <div class="release-meta">
+                    <img src="<%= release.author.avatarUrl %>&s=32" alt="" class="avatar" width="20" height="20">
+                    <a href="<%= release.author.htmlUrl %>" class="author-link"><%= release.author.login %></a>
+                  </div>
+                  <% if (release.bodyHtml) { %>
+                    <div class="release-body"><%~ release.bodyHtml %></div>
+                  <% } %>
+                </article>
+              <% }) %>
+            </div>
+          </section>
+        <% }) %>
+      </main>
+      <footer class="site-footer">
+        <p>Generated at <%= it.generatedAt %></p>
+      </footer>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var sections = document.querySelectorAll('.report-section');
+      var navLinks = document.querySelectorAll('.nav-links a');
+
+      function showSection(hash) {
+        var target = hash ? hash.replace('#', '') : '';
+
+        sections.forEach(function(s) { s.style.display = 'none'; });
+        navLinks.forEach(function(a) { a.classList.remove('active'); });
+
+        if (target) {
+          var repoSection = document.getElementById('repo-' + target);
+          if (repoSection) {
+            repoSection.style.display = '';
+            navLinks.forEach(function(a) {
+              if (a.getAttribute('data-repo') === target) a.classList.add('active');
+            });
+            return;
+          }
+        }
+        document.getElementById('view-all').style.display = '';
+      }
+
+      window.addEventListener('hashchange', function() {
+        showSection(window.location.hash);
+      });
+
+      showSection(window.location.hash);
+    })();
+  </script>
+</body>
+</html>

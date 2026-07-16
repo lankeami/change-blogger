@@ -132,6 +132,72 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
   );
 }
 
+export async function generateReport(options: GenerateOptions): Promise<void> {
+  const { dataPath, outputDir, templatesDir, siteTitle } = options;
+
+  if (!existsSync(dataPath)) {
+    throw new Error(
+      `${dataPath} not found. Run "npm run fetch" first to generate release data.`,
+    );
+  }
+
+  const raw = readFileSync(dataPath, "utf-8");
+  const siteData: SiteData = JSON.parse(raw);
+  const now = new Date();
+  const renderer = createRenderer(templatesDir);
+
+  const repoList = siteData.repos
+    .map((r) => ({ name: r.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const allReleases: Release[] = siteData.repos
+    .flatMap((repo) => repo.releases)
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    );
+
+  const bucketMap = new Map<TimeBucket, ReleaseCardData[]>();
+  for (const bucket of BUCKET_ORDER) {
+    bucketMap.set(bucket, []);
+  }
+  for (const release of allReleases) {
+    const bucket = getTimeBucket(release.publishedAt, now);
+    bucketMap.get(bucket)!.push(toCardData(release, now));
+  }
+
+  const buckets: TimeBucketData[] = BUCKET_ORDER.filter(
+    (b) => bucketMap.get(b)!.length > 0,
+  ).map((b) => ({
+    label: BUCKET_LABELS[b],
+    releases: bucketMap.get(b)!,
+  }));
+
+  const repoSections = siteData.repos
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((repo) => ({
+      repo: { name: repo.name, description: repo.description, url: repo.url },
+      releases: repo.releases.map((r) => toCardData(r, now)),
+    }));
+
+  const css = readFileSync(join(templatesDir, "style.css"), "utf-8");
+
+  mkdirSync(outputDir, { recursive: true });
+
+  const reportHtml = renderer.renderStandalone("report", {
+    siteTitle,
+    generatedAt: siteData.generatedAt,
+    css,
+    repos: repoList,
+    buckets,
+    repoSections,
+  });
+  writeFileSync(join(outputDir, "report.html"), reportHtml);
+
+  console.log(`Generated report → ${join(outputDir, "report.html")}`);
+}
+
 async function main(): Promise<void> {
   const config = getConfig();
   const projectRoot = process.cwd();

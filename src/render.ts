@@ -59,6 +59,7 @@ export function renderMarkdown(markdown: string): string {
 
 export interface Renderer {
   renderPage(template: string, data: Record<string, unknown>): string;
+  renderStandalone(template: string, data: Record<string, unknown>): string;
   renderFeed(feedData: AtomFeed): string;
 }
 
@@ -69,6 +70,9 @@ export function createRenderer(templatesDir: string): Renderer {
     renderPage(template: string, data: Record<string, unknown>): string {
       const body = eta.render(`./${template}`, data) as string;
       return eta.render("./layout", { ...data, body }) as string;
+    },
+    renderStandalone(template: string, data: Record<string, unknown>): string {
+      return eta.render(`./${template}`, data) as string;
     },
     renderFeed(feedData: AtomFeed): string {
       return eta.render("./feed", feedData) as string;
