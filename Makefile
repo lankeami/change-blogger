@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: clean build fetch generate site serve test local report
+.PHONY: clean build fetch generate site serve test local report report-generate
 
 local: clean site serve
 
@@ -25,5 +25,8 @@ serve:
 test:
 	npx vitest run
 
-report: site
-	open site/index.html
+report-generate: build
+	node dist/report.js
+
+report: build fetch report-generate
+	open site/report.html
