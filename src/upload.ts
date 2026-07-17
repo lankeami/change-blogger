@@ -1,4 +1,5 @@
 import { existsSync, createReadStream } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
 import { resolve } from "node:path";
 
@@ -21,15 +22,19 @@ export async function uploadReport(opts: UploadOptions): Promise<string> {
     );
   }
 
-  if (!existsSync(opts.reportPath)) {
-    throw new Error(
-      `Report not found at ${opts.reportPath} — run 'make report' first to generate site/report.html`
-    );
+  if (!/^[a-zA-Z0-9_-]+$/.test(folderId)) {
+    throw new Error(`GOOGLE_DRIVE_FOLDER_ID contains unexpected characters: ${folderId}`);
   }
 
   if (!existsSync(credentialsPath)) {
     throw new Error(
       `Credentials file not found at ${credentialsPath} — check GOOGLE_DRIVE_CREDENTIALS_PATH`
+    );
+  }
+
+  if (!existsSync(opts.reportPath)) {
+    throw new Error(
+      `Report not found at ${opts.reportPath} — run 'make report' first to generate site/report.html`
     );
   }
 
@@ -56,13 +61,17 @@ export async function uploadReport(opts: UploadOptions): Promise<string> {
   let webViewLink: string;
 
   if (existing.data.files && existing.data.files.length > 0) {
-    fileId = existing.data.files[0].id!;
+    const existingId = existing.data.files[0].id;
+    if (!existingId) throw new Error("Drive API returned a file with no id");
+    fileId = existingId;
     const updated = await drive.files.update({
       fileId,
       media,
       fields: "id, webViewLink",
     });
-    webViewLink = updated.data.webViewLink!;
+    const updatedLink = updated.data.webViewLink;
+    if (!updatedLink) throw new Error("Drive API returned an updated file with no webViewLink");
+    webViewLink = updatedLink;
   } else {
     const created = await drive.files.create({
       requestBody: {
@@ -73,8 +82,12 @@ export async function uploadReport(opts: UploadOptions): Promise<string> {
       media,
       fields: "id, webViewLink",
     });
-    fileId = created.data.id!;
-    webViewLink = created.data.webViewLink!;
+    const createdId = created.data.id;
+    if (!createdId) throw new Error("Drive API returned a created file with no id");
+    fileId = createdId;
+    const createdLink = created.data.webViewLink;
+    if (!createdLink) throw new Error("Drive API returned a created file with no webViewLink");
+    webViewLink = createdLink;
   }
 
   return webViewLink;
@@ -88,9 +101,7 @@ async function main(): Promise<void> {
 }
 
 // Only run as CLI entry point, not when imported as a module
-const isMain =
-  process.argv[1] != null &&
-  (await import("node:url")).fileURLToPath(import.meta.url) === process.argv[1];
+const isMain = process.argv[1] != null && fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isMain) {
   main().catch((err) => {
