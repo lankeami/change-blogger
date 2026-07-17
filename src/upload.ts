@@ -50,6 +50,8 @@ export async function uploadReport(opts: UploadOptions): Promise<string> {
     q: `name = '${fileName}' and '${folderId}' in parents and trashed = false`,
     fields: "files(id, webViewLink)",
     spaces: "drive",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   const media = {
@@ -68,6 +70,7 @@ export async function uploadReport(opts: UploadOptions): Promise<string> {
       fileId,
       media,
       fields: "id, webViewLink",
+      supportsAllDrives: true,
     });
     const updatedLink = updated.data.webViewLink;
     if (!updatedLink) throw new Error("Drive API returned an updated file with no webViewLink");
@@ -81,6 +84,7 @@ export async function uploadReport(opts: UploadOptions): Promise<string> {
       },
       media,
       fields: "id, webViewLink",
+      supportsAllDrives: true,
     });
     const createdId = created.data.id;
     if (!createdId) throw new Error("Drive API returned a created file with no id");
