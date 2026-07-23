@@ -99,6 +99,63 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.search-container {
+  margin-bottom: 2rem;
+}
+
+.search-box {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+
+.search-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.search-clear {
+  padding: 0.625rem 0.875rem;
+  font-size: 1.125rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: none;
+}
+
+.search-clear:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.search-status {
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
 .time-bucket { margin-bottom: 2.5rem; }
 
 .bucket-heading {

@@ -23,33 +23,51 @@
     <div class="main-area">
       <main class="content">
         <section id="view-all" class="report-section">
-          <h1 class="page-heading">Recent Releases</h1>
-          <% it.buckets.forEach(function(bucket) { %>
-            <% if (bucket.releases.length > 0) { %>
-              <section class="time-bucket">
-                <h2 class="bucket-heading"><%= bucket.label %></h2>
-                <% bucket.releases.forEach(function(release) { %>
-                  <article class="release-card">
-                    <div class="release-header">
-                      <a href="#<%= release.repoName %>" class="repo-badge"><%= release.repoName %></a>
-                      <span class="release-tag"><%= release.tagName %></span>
-                      <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
-                    </div>
-                    <h3 class="release-name">
-                      <a href="<%= release.htmlUrl %>"><%= release.name || release.tagName %></a>
-                    </h3>
-                    <div class="release-meta">
-                      <img src="<%= release.author.avatarUrl %>&s=32" alt="" class="avatar" width="20" height="20">
-                      <a href="<%= release.author.htmlUrl %>" class="author-link"><%= release.author.login %></a>
-                    </div>
-                    <% if (release.bodyHtml) { %>
-                      <div class="release-body"><%~ release.bodyHtml %></div>
-                    <% } %>
-                  </article>
-                <% }) %>
-              </section>
-            <% } %>
-          <% }) %>
+          <div class="search-container">
+            <h1 class="page-heading">Recent Releases</h1>
+            <div class="search-box">
+              <input
+                type="text"
+                id="search-input"
+                class="search-input"
+                placeholder="Search releases by repo, tag, name, or content..."
+                aria-label="Search releases">
+              <button id="search-clear" class="search-clear" type="button" aria-label="Clear search">✕</button>
+            </div>
+            <div id="search-status" class="search-status" style="display: none;"></div>
+          </div>
+          <div id="releases-container">
+            <% it.buckets.forEach(function(bucket) { %>
+              <% if (bucket.releases.length > 0) { %>
+                <section class="time-bucket" data-bucket="<%= bucket.label %>">
+                  <h2 class="bucket-heading"><%= bucket.label %></h2>
+                  <% bucket.releases.forEach(function(release) { %>
+                    <article class="release-card"
+                      data-repo="<%= release.repoName %>"
+                      data-tag="<%= release.tagName %>"
+                      data-name="<%= (release.name || release.tagName).toLowerCase() %>"
+                      data-body="<%= release.bodyHtml ? release.bodyHtml.toLowerCase().replace(/<[^>]*>/g, '') : '' %>">
+                      <div class="release-header">
+                        <a href="#<%= release.repoName %>" class="repo-badge"><%= release.repoName %></a>
+                        <span class="release-tag"><%= release.tagName %></span>
+                        <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
+                      </div>
+                      <h3 class="release-name">
+                        <a href="<%= release.htmlUrl %>"><%= release.name || release.tagName %></a>
+                      </h3>
+                      <div class="release-meta">
+                        <img src="<%= release.author.avatarUrl %>&s=32" alt="" class="avatar" width="20" height="20">
+                        <a href="<%= release.author.htmlUrl %>" class="author-link"><%= release.author.login %></a>
+                      </div>
+                      <% if (release.bodyHtml) { %>
+                        <div class="release-body"><%~ release.bodyHtml %></div>
+                      <% } %>
+                    </article>
+                  <% }) %>
+                </section>
+              <% } %>
+            <% }) %>
+          </div>
         </section>
         <% it.repoSections.forEach(function(repoData) { %>
           <section id="repo-<%= repoData.repo.name %>" class="report-section" style="display: none">
@@ -113,10 +131,64 @@
       }
 
       window.addEventListener('hashchange', function() {
+        // Clear search when navigating to a repo section
+        var searchInput = document.getElementById('search-input');
+        if (searchInput) { searchInput.value = ''; performSearch(''); }
         showSection(window.location.hash);
       });
 
       showSection(window.location.hash);
+
+      // Search
+      var searchInput = document.getElementById('search-input');
+      var searchClear = document.getElementById('search-clear');
+      var searchStatus = document.getElementById('search-status');
+      var releasesContainer = document.getElementById('releases-container');
+
+      function performSearch(query) {
+        query = query.toLowerCase().trim();
+        var cards = releasesContainer.querySelectorAll('.release-card');
+        var buckets = releasesContainer.querySelectorAll('.time-bucket');
+        var visibleCount = 0;
+
+        cards.forEach(function(card) {
+          var repo = card.getAttribute('data-repo').toLowerCase();
+          var tag = card.getAttribute('data-tag').toLowerCase();
+          var name = card.getAttribute('data-name');
+          var body = card.getAttribute('data-body');
+          var matches = !query || repo.includes(query) || tag.includes(query) || name.includes(query) || body.includes(query);
+          card.style.display = matches ? '' : 'none';
+          if (matches) visibleCount++;
+        });
+
+        var visibleBuckets = 0;
+        buckets.forEach(function(bucket) {
+          var visible = bucket.querySelectorAll('.release-card:not([style*="display: none"])').length;
+          bucket.style.display = visible > 0 ? '' : 'none';
+          if (visible > 0) visibleBuckets++;
+        });
+
+        if (query) {
+          searchStatus.style.display = 'block';
+          searchStatus.textContent = visibleCount === 0
+            ? 'No releases match your search.'
+            : 'Found ' + visibleCount + ' release' + (visibleCount !== 1 ? 's' : '') + ' in ' + visibleBuckets + ' bucket' + (visibleBuckets !== 1 ? 's' : '') + '.';
+        } else {
+          searchStatus.style.display = 'none';
+        }
+      }
+
+      searchInput.addEventListener('input', function(e) {
+        performSearch(e.target.value);
+        searchClear.style.display = e.target.value ? 'block' : 'none';
+      });
+
+      searchClear.addEventListener('click', function() {
+        searchInput.value = '';
+        performSearch('');
+        searchClear.style.display = 'none';
+        searchInput.focus();
+      });
     })();
   </script>
 </body>
