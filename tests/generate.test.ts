@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { generateSite, generateReport } from "../src/generate.js";
+import { generateSite, generateReport, generateMarkdownReport } from "../src/generate.js";
 import {
   mkdtempSync,
   writeFileSync,
@@ -355,5 +355,163 @@ describe("generateReport", () => {
   it("renders markdown in release bodies", () => {
     const html = readFileSync(join(outputDir, "report.html"), "utf-8");
     expect(html).toContain("<strong>new endpoint</strong>");
+  });
+});
+
+describe("generateMarkdownReport", () => {
+  let tmpDir: string;
+  let dataPath: string;
+  let outputDir: string;
+
+  beforeAll(async () => {
+    tmpDir = mkdtempSync(join(tmpdir(), "md-report-test-"));
+    const dataDir = join(tmpDir, "data");
+    mkdirSync(dataDir);
+    outputDir = join(tmpDir, "site");
+
+    const fixture = {
+      org: "test-org",
+      generatedAt: "2026-06-04T12:00:00Z",
+      repos: [
+        {
+          name: "api-service",
+          url: "https://github.com/test-org/api-service",
+          description: "The main API",
+          releases: [
+            {
+              id: 1,
+              repoName: "api-service",
+              repoUrl: "https://github.com/test-org/api-service",
+              tagName: "v2.1.0",
+              name: "Release 2.1.0",
+              body: "## Changes\n- Added new endpoint\n- Fixed bug",
+              htmlUrl:
+                "https://github.com/test-org/api-service/releases/tag/v2.1.0",
+              publishedAt: "2026-06-03T10:00:00Z",
+              isDraft: false,
+              isPrerelease: false,
+              author: {
+                login: "dev1",
+                avatarUrl: "https://avatars.githubusercontent.com/u/1?v=4",
+                htmlUrl: "https://github.com/dev1",
+              },
+            },
+            {
+              id: 2,
+              repoName: "api-service",
+              repoUrl: "https://github.com/test-org/api-service",
+              tagName: "v2.0.0",
+              name: "Release 2.0.0",
+              body: "Major release",
+              htmlUrl:
+                "https://github.com/test-org/api-service/releases/tag/v2.0.0",
+              publishedAt: "2026-05-01T10:00:00Z",
+              isDraft: false,
+              isPrerelease: false,
+              author: {
+                login: "dev2",
+                avatarUrl: "https://avatars.githubusercontent.com/u/2?v=4",
+                htmlUrl: "https://github.com/dev2",
+              },
+            },
+          ],
+        },
+        {
+          name: "web-app",
+          url: "https://github.com/test-org/web-app",
+          description: "Frontend application",
+          releases: [
+            {
+              id: 3,
+              repoName: "web-app",
+              repoUrl: "https://github.com/test-org/web-app",
+              tagName: "v1.5.0",
+              name: "UI Refresh",
+              body: "New look",
+              htmlUrl:
+                "https://github.com/test-org/web-app/releases/tag/v1.5.0",
+              publishedAt: "2026-06-02T14:00:00Z",
+              isDraft: false,
+              isPrerelease: false,
+              author: {
+                login: "dev1",
+                avatarUrl: "https://avatars.githubusercontent.com/u/1?v=4",
+                htmlUrl: "https://github.com/dev1",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    dataPath = join(dataDir, "releases.json");
+    writeFileSync(dataPath, JSON.stringify(fixture));
+
+    await generateMarkdownReport({
+      dataPath,
+      outputDir,
+      siteTitle: "Test Changelog",
+    });
+  });
+
+  afterAll(() => {
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  it("generates releases.md file", () => {
+    const mdPath = join(outputDir, "releases.md");
+    expect(existsSync(mdPath)).toBe(true);
+  });
+
+  it("contains the site title as heading", () => {
+    const md = readFileSync(join(outputDir, "releases.md"), "utf-8");
+    expect(md).toContain("# Test Changelog");
+  });
+
+  it("contains time bucket headings", () => {
+    const md = readFileSync(join(outputDir, "releases.md"), "utf-8");
+    // All fixture dates are old relative to "now", so they should be in "Older"
+    expect(md).toContain("## Older");
+  });
+
+  it("contains markdown table headers with correct columns", () => {
+    const md = readFileSync(join(outputDir, "releases.md"), "utf-8");
+    expect(md).toContain("| Repo | Tag | Release Name | Date | Author |");
+    expect(md).toContain("| --- | --- | --- | --- | --- |");
+  });
+
+  it("contains release data in table rows", () => {
+    const md = readFileSync(join(outputDir, "releases.md"), "utf-8");
+    expect(md).toContain("api-service");
+    expect(md).toContain("v2.1.0");
+    expect(md).toContain("Release 2.1.0");
+    expect(md).toContain("dev1");
+    expect(md).toContain("web-app");
+    expect(md).toContain("v1.5.0");
+    expect(md).toContain("UI Refresh");
+  });
+
+  it("contains details blocks with release body content", () => {
+    const md = readFileSync(join(outputDir, "releases.md"), "utf-8");
+    expect(md).toContain("<details>");
+    expect(md).toContain("</details>");
+    expect(md).toContain("Added new endpoint");
+    expect(md).toContain("Major release");
+  });
+
+  it("includes summary text in details blocks", () => {
+    const md = readFileSync(join(outputDir, "releases.md"), "utf-8");
+    expect(md).toContain("<summary>");
+    expect(md).toContain("api-service v2.1.0");
+  });
+
+  it("throws when data file is missing", async () => {
+    await expect(
+      generateMarkdownReport({
+        dataPath: "/nonexistent/releases.json",
+        outputDir,
+        siteTitle: "Test",
+      })
+    ).rejects.toThrow("not found");
   });
 });

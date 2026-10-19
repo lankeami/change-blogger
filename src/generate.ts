@@ -11,6 +11,12 @@ import {
 import type { SiteData, Release, ReleaseCardData, TimeBucketData } from "./types.js";
 import { writeFeedFiles } from "./feed.js";
 
+export interface MarkdownReportOptions {
+  dataPath: string;
+  outputDir: string;
+  siteTitle: string;
+}
+
 const BUCKET_ORDER: TimeBucket[] = ["this-week", "last-week", "older"];
 const BUCKET_LABELS: Record<TimeBucket, string> = {
   "this-week": "This Week",
@@ -196,6 +202,88 @@ export async function generateReport(options: GenerateOptions): Promise<void> {
   writeFileSync(join(outputDir, "report.html"), reportHtml);
 
   console.log(`Generated report → ${join(outputDir, "report.html")}`);
+}
+
+function formatDate(publishedAt: string): string {
+  const d = new Date(publishedAt);
+  return d.toISOString().slice(0, 10);
+}
+
+function escapeMarkdownTableCell(text: string): string {
+  return text.replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
+export async function generateMarkdownReport(options: MarkdownReportOptions): Promise<void> {
+  const { dataPath, outputDir, siteTitle } = options;
+
+  if (!existsSync(dataPath)) {
+    throw new Error(
+      `${dataPath} not found. Run "npm run fetch" first to generate release data.`,
+    );
+  }
+
+  const raw = readFileSync(dataPath, "utf-8");
+  const siteData: SiteData = JSON.parse(raw);
+  const now = new Date();
+
+  const allReleases: Release[] = siteData.repos
+    .flatMap((repo) => repo.releases)
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    );
+
+  const bucketMap = new Map<TimeBucket, Release[]>();
+  for (const bucket of BUCKET_ORDER) {
+    bucketMap.set(bucket, []);
+  }
+  for (const release of allReleases) {
+    const bucket = getTimeBucket(release.publishedAt, now);
+    bucketMap.get(bucket)!.push(release);
+  }
+
+  const lines: string[] = [];
+  lines.push(`# ${siteTitle}`);
+  lines.push("");
+  lines.push(`*Generated: ${siteData.generatedAt}*`);
+  lines.push("");
+
+  for (const bucket of BUCKET_ORDER) {
+    const releases = bucketMap.get(bucket)!;
+    if (releases.length === 0) continue;
+
+    lines.push(`## ${BUCKET_LABELS[bucket]}`);
+    lines.push("");
+    lines.push("| Repo | Tag | Release Name | Date | Author |");
+    lines.push("| --- | --- | --- | --- | --- |");
+
+    for (const release of releases) {
+      const repo = escapeMarkdownTableCell(release.repoName);
+      const tag = escapeMarkdownTableCell(release.tagName);
+      const name = escapeMarkdownTableCell(release.name);
+      const date = formatDate(release.publishedAt);
+      const author = escapeMarkdownTableCell(release.author.login);
+      lines.push(`| ${repo} | ${tag} | ${name} | ${date} | ${author} |`);
+    }
+
+    lines.push("");
+
+    // Details blocks for release bodies
+    for (const release of releases) {
+      if (!release.body || release.body.trim() === "") continue;
+      lines.push(`<details>`);
+      lines.push(`<summary>${release.repoName} ${release.tagName}</summary>`);
+      lines.push("");
+      lines.push(release.body);
+      lines.push("");
+      lines.push(`</details>`);
+      lines.push("");
+    }
+  }
+
+  mkdirSync(outputDir, { recursive: true });
+  writeFileSync(join(outputDir, "releases.md"), lines.join("\n"));
+  console.log(`Generated markdown report → ${join(outputDir, "releases.md")}`);
 }
 
 async function main(): Promise<void> {
