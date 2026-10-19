@@ -1,17 +1,26 @@
 import { resolve } from "node:path";
 import { getConfig } from "./config.js";
-import { generateReport } from "./generate.js";
+import { generateReport, generateMarkdownReport } from "./generate.js";
 
 async function main(): Promise<void> {
   const config = getConfig();
   const projectRoot = process.cwd();
 
+  const dataPath = resolve(projectRoot, "data", "releases.json");
+  const outputDir = resolve(projectRoot, config.outputDir);
+
   await generateReport({
-    dataPath: resolve(projectRoot, "data", "releases.json"),
-    outputDir: resolve(projectRoot, config.outputDir),
+    dataPath,
+    outputDir,
     templatesDir: resolve(projectRoot, "templates"),
     siteTitle: config.siteTitle,
     siteUrl: config.siteUrl,
+  });
+
+  await generateMarkdownReport({
+    dataPath,
+    outputDir,
+    siteTitle: config.siteTitle,
   });
 }
 

@@ -1,6 +1,6 @@
 ---
 name: daily-report
-description: One-shot build of the org-wide changelog home page. Fetches fresh GitHub release data, generates only the index page, and opens it in the browser. No server started.
+description: One-shot build of the org-wide changelog home page. Fetches fresh GitHub release data, generates both the HTML report and a markdown table (releases.md), and opens the report in the browser. No server started.
 ---
 
 # Daily Report
@@ -21,7 +21,7 @@ Generate the org-wide changelog and open it directly in the browser. One-shot â€
 make report
 ```
 
-This compiles TypeScript, fetches fresh release data from the GitHub API, generates the static site, and opens `site/index.html` in the default browser.
+This compiles TypeScript, fetches fresh release data from the GitHub API, generates both the HTML report (`site/report.html`) and a markdown table (`site/releases.md`), and opens `site/report.html` in the default browser.
 
 2. If `make report` fails, run the steps individually to isolate the issue:
 
@@ -36,7 +36,7 @@ open site/index.html
 
 ## Target State
 
-`site/index.html` is open in the default browser showing the org-wide release timeline. The user can see which releases shipped in the last day (shown as "today" / "yesterday" in the relative date labels).
+`site/report.html` is open in the default browser showing the org-wide release timeline. `site/releases.md` contains the same release data as a markdown table (with Repo, Tag, Release Name, Date, Author columns, grouped by time bucket, and `<details>` blocks for release bodies) suitable for discussion with Claude or other LLMs.
 
 ## Constraints
 
@@ -47,4 +47,4 @@ open site/index.html
 
 ## Done When
 
-`site/index.html` is opened in the browser and you have reported the result. Nothing else.
+`site/report.html` is opened in the browser, `site/releases.md` exists alongside it, and you have reported the result. Nothing else.
