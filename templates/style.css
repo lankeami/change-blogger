@@ -284,8 +284,8 @@ body {
   line-height: 1.5;
 }
 
-.release-body a { color: var(--color-accent); text-decoration: none; }
-.release-body a:hover { text-decoration: underline; }
+.release-body a:not(.user-pill) { color: var(--color-accent); text-decoration: none; }
+.release-body a:not(.user-pill):hover { text-decoration: underline; }
 
 .release-body blockquote {
   border-left: 3px solid var(--color-accent);
@@ -345,8 +345,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: var(--color-accent-light);
-  color: var(--color-accent-hover);
+  background: var(--color-accent);
+  color: #fff;
   border-radius: 999px;
   padding: 0.1rem 0.6rem 0.1rem 0.25rem;
   font-size: 0.8125rem;
@@ -357,9 +357,13 @@ body {
   max-width: 16rem;
 }
 
-.user-pill:hover {
-  background: var(--color-accent);
+.user-pill:visited {
   color: #fff;
+}
+
+.user-pill:hover {
+  background: var(--color-accent-light);
+  color: var(--color-accent-hover);
 }
 
 .user-pill-avatar {
