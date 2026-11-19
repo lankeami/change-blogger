@@ -46,6 +46,7 @@
                       data-repo="<%= release.repoName %>"
                       data-tag="<%= release.tagName %>"
                       data-name="<%= (release.name || release.tagName).toLowerCase() %>"
+                      data-login="<%= release.author.login.toLowerCase() %>"
                       data-body="<%= release.bodyHtml ? release.bodyHtml.toLowerCase().replace(/<[^>]*>/g, '') : '' %>">
                       <div class="release-header">
                         <a href="#<%= release.repoName %>" class="repo-badge"><%= release.repoName %></a>
@@ -153,8 +154,9 @@
           var repo = card.getAttribute('data-repo').toLowerCase();
           var tag = card.getAttribute('data-tag').toLowerCase();
           var name = card.getAttribute('data-name');
+          var login = card.getAttribute('data-login') || '';
           var body = card.getAttribute('data-body');
-          var matches = !query || repo.includes(query) || tag.includes(query) || name.includes(query) || body.includes(query);
+          var matches = !query || repo.includes(query) || tag.includes(query) || name.includes(query) || login.includes(query) || body.includes(query);
           card.style.display = matches ? '' : 'none';
           if (matches) visibleCount++;
         });
