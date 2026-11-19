@@ -7,6 +7,9 @@ import {
   getRelativeDate,
   renderMarkdown,
   createRenderer,
+  renderUserPill,
+  linkifyMentions,
+  extractMentionLogins,
 } from "../src/render.js";
 
 // ── Task 3: getTimeBucket ───────────────────────────────────────────────────
@@ -89,6 +92,181 @@ describe("renderMarkdown", () => {
 
   it("returns empty string for empty input", () => {
     expect(renderMarkdown("")).toBe("");
+  });
+});
+
+// ── Issue #20: renderUserPill ───────────────────────────────────────────────
+
+describe("renderUserPill", () => {
+  const user = {
+    login: "octocat",
+    name: "The Octocat",
+    avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+    htmlUrl: "https://github.com/octocat",
+  };
+
+  it("renders a single anchor with class user-pill wrapping avatar and text", () => {
+    const html = renderUserPill(user);
+    expect(html.match(/<a\s/g)).toHaveLength(1);
+    expect(html).toMatch(/^<a [^>]*class="user-pill"/);
+    expect(html).toContain("<img");
+    expect(html).toMatch(/<\/a>$/);
+    // avatar and text both live inside the one anchor
+    expect(html.indexOf("<img")).toBeGreaterThan(html.indexOf("<a "));
+    expect(html.indexOf("<img")).toBeLessThan(html.indexOf("</a>"));
+  });
+
+  it("links the whole pill to the profile URL", () => {
+    const html = renderUserPill(user);
+    expect(html).toContain('href="https://github.com/octocat"');
+  });
+
+  it("shows the display name when available", () => {
+    const html = renderUserPill(user);
+    expect(html).toContain("The Octocat");
+  });
+
+  it("falls back to the login when no display name exists", () => {
+    const html = renderUserPill({ ...user, name: null });
+    expect(html).toContain(">octocat<");
+  });
+
+  it("always carries data-login", () => {
+    expect(renderUserPill(user)).toContain('data-login="octocat"');
+    expect(renderUserPill({ ...user, name: null })).toContain(
+      'data-login="octocat"'
+    );
+  });
+
+  it("carries data-name only when a display name exists", () => {
+    expect(renderUserPill(user)).toContain('data-name="The Octocat"');
+    expect(renderUserPill({ ...user, name: null })).not.toContain("data-name");
+  });
+
+  it("opens in a new tab with noopener noreferrer", () => {
+    const html = renderUserPill(user);
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it("escapes HTML in name text and attributes", () => {
+    const html = renderUserPill({ ...user, name: "O'Brien <script>" });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).not.toMatch(/data-name="[^"]*<script>/);
+  });
+
+  it("sets avatar dimensions and lazy loading", () => {
+    const html = renderUserPill(user);
+    expect(html).toMatch(/<img[^>]*width="\d+"/);
+    expect(html).toMatch(/<img[^>]*height="\d+"/);
+    expect(html).toMatch(/<img[^>]*loading="lazy"/);
+  });
+
+  it("defaults avatar and profile URL from login when missing", () => {
+    const html = renderUserPill({ login: "ghost" });
+    expect(html).toContain('href="https://github.com/ghost"');
+    expect(html).toContain('src="https://github.com/ghost.png');
+  });
+});
+
+// ── Issue #20: linkifyMentions ──────────────────────────────────────────────
+
+describe("linkifyMentions", () => {
+  const users: Record<
+    string,
+    { login: string; name: string | null; avatarUrl: string; htmlUrl: string }
+  > = {
+    octocat: {
+      login: "octocat",
+      name: "The Octocat",
+      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+      htmlUrl: "https://github.com/octocat",
+    },
+    "dev-two": {
+      login: "dev-two",
+      name: null,
+      avatarUrl: "https://avatars.githubusercontent.com/u/2?v=4",
+      htmlUrl: "https://github.com/dev-two",
+    },
+  };
+  const resolveUser = (login: string) => users[login] ?? null;
+
+  it("transforms @login in text into a user pill", () => {
+    const html = linkifyMentions("<p>Thanks @octocat for the fix</p>", resolveUser);
+    expect(html).toContain('class="user-pill"');
+    expect(html).toContain('data-login="octocat"');
+    expect(html).toContain("The Octocat");
+    expect(html).not.toContain("@octocat");
+  });
+
+  it("supports logins with internal hyphens", () => {
+    const html = linkifyMentions("<p>cc @dev-two</p>", resolveUser);
+    expect(html).toContain('data-login="dev-two"');
+  });
+
+  it("leaves mentions inside code blocks untouched", () => {
+    const input = "<pre><code>git blame @octocat</code></pre>";
+    expect(linkifyMentions(input, resolveUser)).toBe(input);
+  });
+
+  it("leaves mentions inside inline code untouched", () => {
+    const input = "<p>run <code>@octocat/action</code> now</p>";
+    expect(linkifyMentions(input, resolveUser)).toBe(input);
+  });
+
+  it("leaves mentions inside existing links untouched", () => {
+    const input = '<p><a href="https://github.com/octocat">@octocat</a></p>';
+    expect(linkifyMentions(input, resolveUser)).toBe(input);
+  });
+
+  it("does not transform email addresses", () => {
+    const input = "<p>mail me at jay@octocat.com</p>";
+    expect(linkifyMentions(input, resolveUser)).toBe(input);
+  });
+
+  it("renders a fallback pill when the resolver has no data", () => {
+    const html = linkifyMentions("<p>by @unknownperson</p>", resolveUser);
+    expect(html).toContain('data-login="unknownperson"');
+    expect(html).toContain(">unknownperson<");
+    expect(html).toContain('src="https://github.com/unknownperson.png');
+  });
+
+  it("transforms text after a skipped element", () => {
+    const html = linkifyMentions(
+      "<p><code>@octocat</code> and @octocat</p>",
+      resolveUser
+    );
+    expect(html).toContain("<code>@octocat</code>");
+    expect(html).toContain('data-login="octocat"');
+  });
+});
+
+describe("extractMentionLogins", () => {
+  it("collects mention logins outside code and links", () => {
+    const html =
+      '<p>Thanks @octocat and @dev-two, not <code>@skipme</code> or <a href="#">@linked</a></p>';
+    expect(extractMentionLogins(html).sort()).toEqual(["dev-two", "octocat"]);
+  });
+});
+
+// ── Issue #20: external links open in a new tab ─────────────────────────────
+
+describe("renderMarkdown external links", () => {
+  it("adds target and rel to absolute http(s) links", () => {
+    const html = renderMarkdown("[GitHub](https://github.com) and [plain](http://example.com)");
+    const anchors = html.match(/<a [^>]*>/g)!;
+    expect(anchors.length).toBe(2);
+    for (const a of anchors) {
+      expect(a).toContain('target="_blank"');
+      expect(a).toContain('rel="noopener noreferrer"');
+    }
+  });
+
+  it("leaves relative and anchor links alone", () => {
+    const html = renderMarkdown("[rel](/docs/page) and [hash](#section)");
+    expect(html).not.toContain('target="_blank"');
+    expect(html).not.toContain("noopener");
   });
 });
 

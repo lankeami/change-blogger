@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { getConfig } from "./config.js";
 import { generateReport, generateMarkdownReport } from "./generate.js";
+import { createGithubUserFetcher } from "./users.js";
 
 async function main(): Promise<void> {
   const config = getConfig();
@@ -15,6 +16,8 @@ async function main(): Promise<void> {
     templatesDir: resolve(projectRoot, "templates"),
     siteTitle: config.siteTitle,
     siteUrl: config.siteUrl,
+    usersPath: resolve(projectRoot, "data", "users.json"),
+    userFetcher: createGithubUserFetcher(config.githubToken),
   });
 
   await generateMarkdownReport({

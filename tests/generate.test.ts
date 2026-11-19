@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { generateSite, generateReport, generateMarkdownReport } from "../src/generate.js";
+import { createUserCache } from "../src/users.js";
 import {
   mkdtempSync,
   writeFileSync,
@@ -355,6 +356,258 @@ describe("generateReport", () => {
   it("renders markdown in release bodies", () => {
     const html = readFileSync(join(outputDir, "report.html"), "utf-8");
     expect(html).toContain("<strong>new endpoint</strong>");
+  });
+});
+
+// ── Issue #20: user cache ───────────────────────────────────────────────────
+
+describe("user cache", () => {
+  let tmpDir: string;
+
+  beforeAll(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "user-cache-test-"));
+  });
+
+  afterAll(() => {
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  it("fetches an uncached login once and persists it with the display name", async () => {
+    const cachePath = join(tmpDir, "users-a.json");
+    const fetcher = vi.fn(async (_login: string) => ({
+      name: "The Octocat",
+      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+      htmlUrl: "https://github.com/octocat",
+    }));
+    const cache = createUserCache({ cachePath, fetcher });
+
+    const user = await cache.resolve("octocat");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(user).toMatchObject({ login: "octocat", name: "The Octocat" });
+
+    expect(existsSync(cachePath)).toBe(true);
+    const stored = JSON.parse(readFileSync(cachePath, "utf-8"));
+    expect(stored.octocat).toMatchObject({
+      login: "octocat",
+      name: "The Octocat",
+      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+      htmlUrl: "https://github.com/octocat",
+    });
+  });
+
+  it("makes zero fetch calls for a cached login (fresh instance from disk)", async () => {
+    const cachePath = join(tmpDir, "users-b.json");
+    const firstFetcher = vi.fn(async (_login: string) => ({
+      name: "Dev One",
+      avatarUrl: "https://avatars.githubusercontent.com/u/1?v=4",
+      htmlUrl: "https://github.com/dev1",
+    }));
+    await createUserCache({ cachePath, fetcher: firstFetcher }).resolve("dev1");
+
+    const secondFetcher = vi.fn(async (_login: string) => ({
+      name: "SHOULD NOT BE CALLED",
+      avatarUrl: "",
+      htmlUrl: "",
+    }));
+    const cache = createUserCache({ cachePath, fetcher: secondFetcher });
+    const user = await cache.resolve("dev1");
+
+    expect(secondFetcher).toHaveBeenCalledTimes(0);
+    expect(user).toMatchObject({ login: "dev1", name: "Dev One" });
+  });
+
+  it("caches name: null for users without a public display name", async () => {
+    const cachePath = join(tmpDir, "users-c.json");
+    const fetcher = vi.fn(async (_login: string) => ({
+      name: null,
+      avatarUrl: "https://avatars.githubusercontent.com/u/9?v=4",
+      htmlUrl: "https://github.com/noname",
+    }));
+    const cache = createUserCache({ cachePath, fetcher });
+    const user = await cache.resolve("noname");
+
+    expect(user).toMatchObject({ login: "noname", name: null });
+    const stored = JSON.parse(readFileSync(cachePath, "utf-8"));
+    expect(stored.noname.name).toBeNull();
+  });
+
+  it("negative-caches unknown users so they are not re-requested", async () => {
+    const cachePath = join(tmpDir, "users-d.json");
+    const notFoundFetcher = vi.fn(async (_login: string) => null);
+    const first = createUserCache({ cachePath, fetcher: notFoundFetcher });
+    await first.resolve("ghost-user");
+    expect(notFoundFetcher).toHaveBeenCalledTimes(1);
+
+    const secondFetcher = vi.fn(async (_login: string) => null);
+    const second = createUserCache({ cachePath, fetcher: secondFetcher });
+    const user = await second.resolve("ghost-user");
+
+    expect(secondFetcher).toHaveBeenCalledTimes(0);
+    expect(user).toMatchObject({ login: "ghost-user", missing: true });
+  });
+
+  it("seeds login/avatar/profile without marking the name as fetched", async () => {
+    const cachePath = join(tmpDir, "users-e.json");
+    const fetcher = vi.fn(async (_login: string) => ({
+      name: "Dev Two",
+      avatarUrl: "https://avatars.githubusercontent.com/u/2?v=4",
+      htmlUrl: "https://github.com/dev2",
+    }));
+    const cache = createUserCache({ cachePath, fetcher });
+    cache.seed({
+      login: "dev2",
+      avatarUrl: "https://avatars.githubusercontent.com/u/2?v=4",
+      htmlUrl: "https://github.com/dev2",
+    });
+
+    // seeded entry still needs one fetch for the display name
+    const user = await cache.resolve("dev2");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(user).toMatchObject({ login: "dev2", name: "Dev Two" });
+
+    // but afterwards it is fully cached
+    await cache.resolve("dev2");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Issue #20: report user pills + cache wiring ─────────────────────────────
+
+describe("generateReport user pills", () => {
+  let tmpDir: string;
+  let dataPath: string;
+  let usersPath: string;
+  let outputDir: string;
+  const templatesDir = join(process.cwd(), "templates");
+
+  const fixture = {
+    org: "test-org",
+    generatedAt: "2026-06-04T12:00:00Z",
+    repos: [
+      {
+        name: "api-service",
+        url: "https://github.com/test-org/api-service",
+        description: "The main API",
+        releases: [
+          {
+            id: 1,
+            repoName: "api-service",
+            repoUrl: "https://github.com/test-org/api-service",
+            tagName: "v2.1.0",
+            name: "Release 2.1.0",
+            body: "Thanks @dev2 for the review. See `@not-a-user` in code.",
+            htmlUrl:
+              "https://github.com/test-org/api-service/releases/tag/v2.1.0",
+            publishedAt: "2026-06-03T10:00:00Z",
+            isDraft: false,
+            isPrerelease: false,
+            author: {
+              login: "dev1",
+              avatarUrl: "https://avatars.githubusercontent.com/u/1?v=4",
+              htmlUrl: "https://github.com/dev1",
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  beforeAll(async () => {
+    tmpDir = mkdtempSync(join(tmpdir(), "report-pills-test-"));
+    const dataDir = join(tmpDir, "data");
+    mkdirSync(dataDir);
+    outputDir = join(tmpDir, "site");
+    dataPath = join(dataDir, "releases.json");
+    usersPath = join(dataDir, "users.json");
+    writeFileSync(dataPath, JSON.stringify(fixture));
+
+    const fetcher = async (login: string) => ({
+      name: login === "dev1" ? "Dev One" : login === "dev2" ? "Dev Two" : null,
+      avatarUrl: `https://avatars.githubusercontent.com/u/${login}?v=4`,
+      htmlUrl: `https://github.com/${login}`,
+    });
+
+    await generateReport({
+      dataPath,
+      outputDir,
+      templatesDir,
+      siteTitle: "Test Changelog",
+      siteUrl: "",
+      usersPath,
+      userFetcher: fetcher,
+    });
+  });
+
+  afterAll(() => {
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  it("creates users.json after a report build", () => {
+    expect(existsSync(usersPath)).toBe(true);
+    const stored = JSON.parse(readFileSync(usersPath, "utf-8"));
+    expect(stored.dev1).toMatchObject({ login: "dev1", name: "Dev One" });
+    expect(stored.dev2).toMatchObject({ login: "dev2", name: "Dev Two" });
+  });
+
+  it("renders the release author as a user pill with data attributes", () => {
+    const html = readFileSync(join(outputDir, "report.html"), "utf-8");
+    expect(html).toMatch(
+      /<a [^>]*class="user-pill"[^>]*data-login="dev1"[^>]*data-name="Dev One"/
+    );
+  });
+
+  it("renders @mentions in release bodies as user pills", () => {
+    const html = readFileSync(join(outputDir, "report.html"), "utf-8");
+    expect(html).toMatch(/<a [^>]*class="user-pill"[^>]*data-login="dev2"/);
+    expect(html).toContain("Dev Two");
+  });
+
+  it("leaves mentions inside code spans untouched", () => {
+    const html = readFileSync(join(outputDir, "report.html"), "utf-8");
+    expect(html).toContain("<code>@not-a-user</code>");
+    expect(html).not.toMatch(/data-login="not-a-user"/);
+  });
+
+  it("uses the shared pill for authors (no duplicated author-link markup)", () => {
+    const html = readFileSync(join(outputDir, "report.html"), "utf-8");
+    expect(html).not.toContain('class="author-link"');
+  });
+
+  it("every external link in the report opens in a new tab", () => {
+    const html = readFileSync(join(outputDir, "report.html"), "utf-8");
+    const external = html.match(/<a [^>]*href="https?:\/\/[^>]*>/g) ?? [];
+    expect(external.length).toBeGreaterThan(0);
+    for (const anchor of external) {
+      expect(anchor).toContain('target="_blank"');
+      expect(anchor).toContain('rel="noopener noreferrer"');
+    }
+  });
+
+  it("internal hash links do not get new-tab attributes", () => {
+    const html = readFileSync(join(outputDir, "report.html"), "utf-8");
+    const internal = html.match(/<a [^>]*href="#[^>]*>/g) ?? [];
+    expect(internal.length).toBeGreaterThan(0);
+    for (const anchor of internal) {
+      expect(anchor).not.toContain('target="_blank"');
+    }
+  });
+
+  it("a second build makes zero user requests for cached logins", async () => {
+    const fetchSpy = vi.fn(async (_login: string) => ({
+      name: "SHOULD NOT BE CALLED",
+      avatarUrl: "",
+      htmlUrl: "",
+    }));
+    await generateReport({
+      dataPath,
+      outputDir,
+      templatesDir,
+      siteTitle: "Test Changelog",
+      siteUrl: "",
+      usersPath,
+      userFetcher: fetchSpy,
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(0);
   });
 });
 

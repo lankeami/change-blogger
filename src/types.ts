@@ -53,6 +53,8 @@ export interface ReleaseCardData {
     avatarUrl: string;
     htmlUrl: string;
   };
+  /** Pre-rendered user pill for the release author (issue #20). */
+  authorPillHtml: string;
 }
 
 export interface TimeBucketData {

@@ -1,15 +1,20 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { resolve, join, dirname } from "node:path";
 import { getConfig } from "./config.js";
 import {
   createRenderer,
   getTimeBucket,
   getRelativeDate,
   renderMarkdown,
+  renderUserPill,
+  linkifyMentions,
+  extractMentionLogins,
+  type ResolveUser,
   type TimeBucket,
 } from "./render.js";
 import type { SiteData, Release, ReleaseCardData, TimeBucketData } from "./types.js";
 import { writeFeedFiles } from "./feed.js";
+import { createUserCache, type UserFetcher } from "./users.js";
 
 export interface MarkdownReportOptions {
   dataPath: string;
@@ -24,16 +29,34 @@ const BUCKET_LABELS: Record<TimeBucket, string> = {
   older: "Older",
 };
 
-function toCardData(release: Release, now: Date): ReleaseCardData {
+function toCardData(
+  release: Release,
+  now: Date,
+  resolveUser?: ResolveUser,
+): ReleaseCardData {
+  const resolved = resolveUser?.(release.author.login);
+  const author = {
+    login: release.author.login,
+    name: resolved?.name ?? null,
+    avatarUrl: resolved?.avatarUrl || release.author.avatarUrl,
+    htmlUrl: resolved?.htmlUrl || release.author.htmlUrl,
+  };
+
+  let bodyHtml = renderMarkdown(release.body);
+  if (resolveUser) {
+    bodyHtml = linkifyMentions(bodyHtml, resolveUser);
+  }
+
   return {
     repoName: release.repoName,
     tagName: release.tagName,
     name: release.name,
     publishedAt: release.publishedAt,
     relativeDate: getRelativeDate(release.publishedAt, now),
-    bodyHtml: renderMarkdown(release.body),
+    bodyHtml,
     htmlUrl: release.htmlUrl,
     author: release.author,
+    authorPillHtml: renderUserPill(author),
   };
 }
 
@@ -43,6 +66,10 @@ export interface GenerateOptions {
   templatesDir: string;
   siteTitle: string;
   siteUrl: string;
+  /** Where the user profile cache lives; defaults to users.json next to dataPath. */
+  usersPath?: string;
+  /** Fetches GitHub user profiles for uncached logins; omit to build offline. */
+  userFetcher?: UserFetcher;
 }
 
 export async function generateSite(options: GenerateOptions): Promise<void> {
@@ -152,9 +179,12 @@ export async function generateReport(options: GenerateOptions): Promise<void> {
   const now = new Date();
   const renderer = createRenderer(templatesDir);
 
-  const repoList = siteData.repos
-    .map((r) => ({ name: r.name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // --- User cache: seed authors, resolve authors + @mentions, persist ---
+  const usersPath = options.usersPath ?? join(dirname(dataPath), "users.json");
+  const cache = createUserCache({
+    cachePath: usersPath,
+    fetcher: options.userFetcher,
+  });
 
   const allReleases: Release[] = siteData.repos
     .flatMap((repo) => repo.releases)
@@ -163,13 +193,32 @@ export async function generateReport(options: GenerateOptions): Promise<void> {
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
     );
 
+  const logins = new Set<string>();
+  for (const release of allReleases) {
+    cache.seed(release.author);
+    logins.add(release.author.login);
+    for (const login of extractMentionLogins(renderMarkdown(release.body))) {
+      logins.add(login);
+    }
+  }
+  for (const login of logins) {
+    await cache.resolve(login);
+  }
+  cache.save();
+
+  const resolveUser: ResolveUser = (login) => cache.getSync(login);
+
+  const repoList = siteData.repos
+    .map((r) => ({ name: r.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const bucketMap = new Map<TimeBucket, ReleaseCardData[]>();
   for (const bucket of BUCKET_ORDER) {
     bucketMap.set(bucket, []);
   }
   for (const release of allReleases) {
     const bucket = getTimeBucket(release.publishedAt, now);
-    bucketMap.get(bucket)!.push(toCardData(release, now));
+    bucketMap.get(bucket)!.push(toCardData(release, now, resolveUser));
   }
 
   const buckets: TimeBucketData[] = BUCKET_ORDER.filter(
@@ -184,7 +233,7 @@ export async function generateReport(options: GenerateOptions): Promise<void> {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((repo) => ({
       repo: { name: repo.name, description: repo.description, url: repo.url },
-      releases: repo.releases.map((r) => toCardData(r, now)),
+      releases: repo.releases.map((r) => toCardData(r, now, resolveUser)),
     }));
 
   const css = readFileSync(join(templatesDir, "style.css"), "utf-8");

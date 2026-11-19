@@ -53,11 +53,10 @@
                         <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
                       </div>
                       <h3 class="release-name">
-                        <a href="<%= release.htmlUrl %>"><%= release.name || release.tagName %></a>
+                        <a href="<%= release.htmlUrl %>" target="_blank" rel="noopener noreferrer"><%= release.name || release.tagName %></a>
                       </h3>
                       <div class="release-meta">
-                        <img src="<%= release.author.avatarUrl %>&s=32" alt="" class="avatar" width="20" height="20">
-                        <a href="<%= release.author.htmlUrl %>" class="author-link"><%= release.author.login %></a>
+                        <%~ release.authorPillHtml %>
                       </div>
                       <% if (release.bodyHtml) { %>
                         <div class="release-body"><%~ release.bodyHtml %></div>
@@ -76,7 +75,7 @@
               <% if (repoData.repo.description) { %>
                 <p class="repo-description"><%= repoData.repo.description %></p>
               <% } %>
-              <a href="<%= repoData.repo.url %>" class="github-link">View on GitHub &rarr;</a>
+              <a href="<%= repoData.repo.url %>" class="github-link" target="_blank" rel="noopener noreferrer">View on GitHub &rarr;</a>
             </header>
             <div class="releases-list">
               <% repoData.releases.forEach(function(release) { %>
@@ -86,11 +85,10 @@
                     <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
                   </div>
                   <h3 class="release-name">
-                    <a href="<%= release.htmlUrl %>"><%= release.name || release.tagName %></a>
+                    <a href="<%= release.htmlUrl %>" target="_blank" rel="noopener noreferrer"><%= release.name || release.tagName %></a>
                   </h3>
                   <div class="release-meta">
-                    <img src="<%= release.author.avatarUrl %>&s=32" alt="" class="avatar" width="20" height="20">
-                    <a href="<%= release.author.htmlUrl %>" class="author-link"><%= release.author.login %></a>
+                    <%~ release.authorPillHtml %>
                   </div>
                   <% if (release.bodyHtml) { %>
                     <div class="release-body"><%~ release.bodyHtml %></div>
