@@ -151,4 +151,46 @@ describe("developer.eta template", () => {
     // Should still render without error
     expect(html).toContain("<!DOCTYPE html>");
   });
+
+  // Active developer highlighting in right sidebar (issue #24)
+  it("highlights the active developer in the right sidebar", () => {
+    const developers = [
+      { login: "alice", avatarUrl: "https://avatars/alice", htmlUrl: "https://github.com/alice" },
+      { login: "octocat", avatarUrl: "https://avatars/octocat", htmlUrl: "https://github.com/octocat" },
+    ];
+    const html = renderDeveloperPage({
+      developer,
+      releases,
+      developers,
+      activeDeveloper: "octocat",
+    });
+    // The sidebar-right should exist and the octocat link should have the active class
+    const sidebarStart = html.indexOf('class="sidebar-right"');
+    expect(sidebarStart).toBeGreaterThan(-1);
+    const sidebarEnd = html.indexOf("</aside>", sidebarStart);
+    const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
+
+    // The active developer link should have both dev-link and active classes
+    expect(sidebarHtml).toMatch(/href="[^"]*developer\/octocat\/"[^>]*class="dev-link active"/);
+  });
+
+  it("does not highlight non-active developers in the right sidebar", () => {
+    const developers = [
+      { login: "alice", avatarUrl: "https://avatars/alice", htmlUrl: "https://github.com/alice" },
+      { login: "octocat", avatarUrl: "https://avatars/octocat", htmlUrl: "https://github.com/octocat" },
+    ];
+    const html = renderDeveloperPage({
+      developer,
+      releases,
+      developers,
+      activeDeveloper: "octocat",
+    });
+    const sidebarStart = html.indexOf('class="sidebar-right"');
+    const sidebarEnd = html.indexOf("</aside>", sidebarStart);
+    const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
+
+    // alice's link should NOT have the active class
+    expect(sidebarHtml).toMatch(/href="[^"]*developer\/alice\/"[^>]*class="dev-link"[^"]*>/);
+    expect(sidebarHtml).not.toMatch(/href="[^"]*developer\/alice\/"[^>]*class="dev-link active"/);
+  });
 });

@@ -167,6 +167,34 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
     writeFileSync(join(repoDir, "index.html"), repoHtml);
   }
 
+  // --- Developer pages ---
+  for (const dev of developers) {
+    const devDir = join(outputDir, "developer", dev.login);
+    mkdirSync(devDir, { recursive: true });
+
+    const devReleases = allReleases
+      .filter((r) => r.author.login.toLowerCase() === dev.login.toLowerCase())
+      .map((r) => toCardData(r, now));
+
+    const devHtml = renderer.renderPage("developer", {
+      siteTitle,
+      pageTitle: dev.login,
+      basePath: "../../",
+      repos: repoList,
+      developers,
+      generatedAt: siteData.generatedAt,
+      activeDeveloper: dev.login,
+      developer: {
+        login: dev.login,
+        name: null,
+        avatarUrl: dev.avatarUrl,
+        htmlUrl: dev.htmlUrl,
+      },
+      releases: devReleases,
+    });
+    writeFileSync(join(devDir, "index.html"), devHtml);
+  }
+
   // --- Copy stylesheet and static files ---
   const cssSource = join(templatesDir, "style.css");
   copyFileSync(cssSource, join(outputDir, "style.css"));

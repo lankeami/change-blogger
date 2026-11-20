@@ -36,7 +36,7 @@
         <% it.developers.forEach(function(dev) { %>
           <li>
             <a href="<%= it.basePath %>developer/<%= dev.login %>/"
-               class="dev-link">
+               class="dev-link<% if (it.activeDeveloper === dev.login) { %> active<% } %>">
               <img src="<%= dev.avatarUrl %>&s=32" alt="" class="dev-avatar" width="20" height="20" loading="lazy">
               <span class="dev-login"><%= dev.login %></span>
             </a>

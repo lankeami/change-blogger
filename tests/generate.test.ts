@@ -961,3 +961,155 @@ describe("right sidebar CSS", () => {
     expect(mediaMatch![1]).toContain(".sidebar-right");
   });
 });
+
+// ── Issue #24: developer page generation ─────────────────────────────────
+
+describe("generateSite developer pages", () => {
+  let tmpDir: string;
+  let dataPath: string;
+  let outputDir: string;
+  const templatesDir = join(process.cwd(), "templates");
+
+  beforeAll(async () => {
+    tmpDir = mkdtempSync(join(tmpdir(), "dev-pages-test-"));
+    const dataDir = join(tmpDir, "data");
+    mkdirSync(dataDir);
+    outputDir = join(tmpDir, "site");
+
+    const fixture = {
+      org: "test-org",
+      generatedAt: "2026-06-04T12:00:00Z",
+      repos: [
+        {
+          name: "api-service",
+          url: "https://github.com/test-org/api-service",
+          description: "The main API",
+          releases: [
+            {
+              id: 1, repoName: "api-service",
+              repoUrl: "https://github.com/test-org/api-service",
+              tagName: "v2.1.0", name: "Release 2.1.0",
+              body: "Changes", htmlUrl: "https://github.com/test-org/api-service/releases/tag/v2.1.0",
+              publishedAt: "2026-06-03T10:00:00Z", isDraft: false, isPrerelease: false,
+              author: { login: "dev1", avatarUrl: "https://avatars.githubusercontent.com/u/1?v=4", htmlUrl: "https://github.com/dev1" },
+            },
+            {
+              id: 2, repoName: "api-service",
+              repoUrl: "https://github.com/test-org/api-service",
+              tagName: "v2.0.0", name: "Release 2.0.0",
+              body: "Major release", htmlUrl: "https://github.com/test-org/api-service/releases/tag/v2.0.0",
+              publishedAt: "2026-05-01T10:00:00Z", isDraft: false, isPrerelease: false,
+              author: { login: "dev2", avatarUrl: "https://avatars.githubusercontent.com/u/2?v=4", htmlUrl: "https://github.com/dev2" },
+            },
+          ],
+        },
+        {
+          name: "web-app",
+          url: "https://github.com/test-org/web-app",
+          description: "Frontend application",
+          releases: [
+            {
+              id: 3, repoName: "web-app",
+              repoUrl: "https://github.com/test-org/web-app",
+              tagName: "v1.5.0", name: "UI Refresh",
+              body: "New look", htmlUrl: "https://github.com/test-org/web-app/releases/tag/v1.5.0",
+              publishedAt: "2026-06-02T14:00:00Z", isDraft: false, isPrerelease: false,
+              author: { login: "dev1", avatarUrl: "https://avatars.githubusercontent.com/u/1?v=4", htmlUrl: "https://github.com/dev1" },
+            },
+          ],
+        },
+      ],
+    };
+
+    dataPath = join(dataDir, "releases.json");
+    writeFileSync(dataPath, JSON.stringify(fixture));
+
+    await generateSite({
+      dataPath,
+      outputDir,
+      templatesDir,
+      siteTitle: "Test Changelog",
+      siteUrl: "",
+    });
+  });
+
+  afterAll(() => {
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  it("generates developer/dev1/index.html", () => {
+    expect(existsSync(join(outputDir, "developer", "dev1", "index.html"))).toBe(true);
+  });
+
+  it("generates developer/dev2/index.html", () => {
+    expect(existsSync(join(outputDir, "developer", "dev2", "index.html"))).toBe(true);
+  });
+
+  it("developer page contains the developer header", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
+    expect(html).toContain("developer-header");
+  });
+
+  it("developer page has correct basePath for stylesheet", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
+    expect(html).toContain('href="../../style.css"');
+  });
+
+  it("dev1 page shows only releases authored by dev1", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
+    // dev1 authored Release 2.1.0 and UI Refresh
+    expect(html).toContain("Release 2.1.0");
+    expect(html).toContain("UI Refresh");
+    // dev1 did NOT author Release 2.0.0
+    expect(html).not.toContain("Release 2.0.0");
+  });
+
+  it("dev2 page shows only releases authored by dev2", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev2", "index.html"), "utf-8");
+    expect(html).toContain("Release 2.0.0");
+    expect(html).not.toContain("Release 2.1.0");
+    expect(html).not.toContain("UI Refresh");
+  });
+
+  it("developer page contains the left sidebar with repos", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
+    expect(html).toContain("api-service");
+    expect(html).toContain("web-app");
+  });
+
+  it("developer page contains the right sidebar with developers", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
+    expect(html).toContain('class="sidebar-right"');
+  });
+
+  it("developer page has GitHub profile link", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
+    expect(html).toContain('href="https://github.com/dev1"');
+    expect(html).toContain("View on GitHub");
+  });
+
+  it("developer page highlights the active developer in the right sidebar", () => {
+    const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
+    // Find the sidebar-right section
+    const sidebarStart = html.indexOf('class="sidebar-right"');
+    expect(sidebarStart).toBeGreaterThan(-1);
+    const sidebarEnd = html.indexOf("</aside>", sidebarStart);
+    const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
+
+    // dev1 link should have the active class
+    expect(sidebarHtml).toMatch(/href="[^"]*developer\/dev1\/"[^>]*class="dev-link active"/);
+    // dev2 link should NOT have the active class
+    expect(sidebarHtml).not.toMatch(/href="[^"]*developer\/dev2\/"[^>]*class="dev-link active"/);
+  });
+
+  it("index page does not highlight any developer in the right sidebar", () => {
+    const html = readFileSync(join(outputDir, "index.html"), "utf-8");
+    const sidebarStart = html.indexOf('class="sidebar-right"');
+    expect(sidebarStart).toBeGreaterThan(-1);
+    const sidebarEnd = html.indexOf("</aside>", sidebarStart);
+    const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
+
+    // No developer should be active on the index page
+    expect(sidebarHtml).not.toContain("dev-link active");
+  });
+});
