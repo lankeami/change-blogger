@@ -12,7 +12,7 @@ import {
   type ResolveUser,
   type TimeBucket,
 } from "./render.js";
-import type { SiteData, Release, ReleaseCardData, TimeBucketData } from "./types.js";
+import type { SiteData, Release, ReleaseCardData, TimeBucketData, DeveloperInfo } from "./types.js";
 import { writeFeedFiles } from "./feed.js";
 import { createUserCache, type UserFetcher } from "./users.js";
 
@@ -28,6 +28,24 @@ const BUCKET_LABELS: Record<TimeBucket, string> = {
   "last-week": "Last Week",
   older: "Older",
 };
+
+/** Extract unique developers from releases, sorted alphabetically by login. */
+export function extractDevelopers(releases: Release[]): DeveloperInfo[] {
+  const seen = new Map<string, DeveloperInfo>();
+  for (const release of releases) {
+    const key = release.author.login.toLowerCase();
+    if (!seen.has(key)) {
+      seen.set(key, {
+        login: release.author.login,
+        avatarUrl: release.author.avatarUrl,
+        htmlUrl: release.author.htmlUrl,
+      });
+    }
+  }
+  return [...seen.values()].sort((a, b) =>
+    a.login.toLowerCase().localeCompare(b.login.toLowerCase()),
+  );
+}
 
 function toCardData(
   release: Release,
@@ -96,6 +114,9 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
     );
 
+  // --- Developers list for right sidebar (issue #24) ---
+  const developers = extractDevelopers(allReleases);
+
   const bucketMap = new Map<TimeBucket, ReleaseCardData[]>();
   for (const bucket of BUCKET_ORDER) {
     bucketMap.set(bucket, []);
@@ -119,6 +140,7 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
     pageTitle: "",
     basePath: "",
     repos: repoList,
+    developers,
     generatedAt: siteData.generatedAt,
     buckets,
   });
@@ -136,12 +158,41 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
       pageTitle: repo.name,
       basePath: "../",
       repos: repoList,
+      developers,
       generatedAt: siteData.generatedAt,
       activeRepo: repo.name,
       repo: { name: repo.name, description: repo.description, url: repo.url },
       releases,
     });
     writeFileSync(join(repoDir, "index.html"), repoHtml);
+  }
+
+  // --- Developer pages ---
+  for (const dev of developers) {
+    const devDir = join(outputDir, "developer", dev.login);
+    mkdirSync(devDir, { recursive: true });
+
+    const devReleases = allReleases
+      .filter((r) => r.author.login.toLowerCase() === dev.login.toLowerCase())
+      .map((r) => toCardData(r, now));
+
+    const devHtml = renderer.renderPage("developer", {
+      siteTitle,
+      pageTitle: dev.login,
+      basePath: "../../",
+      repos: repoList,
+      developers,
+      generatedAt: siteData.generatedAt,
+      activeDeveloper: dev.login,
+      developer: {
+        login: dev.login,
+        name: null,
+        avatarUrl: dev.avatarUrl,
+        htmlUrl: dev.htmlUrl,
+      },
+      releases: devReleases,
+    });
+    writeFileSync(join(devDir, "index.html"), devHtml);
   }
 
   // --- Copy stylesheet and static files ---
