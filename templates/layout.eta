@@ -29,6 +29,22 @@
         <p>Generated at <%= it.generatedAt %></p>
       </footer>
     </div>
+    <% if (it.developers && it.developers.length > 0) { %>
+    <aside class="sidebar-right">
+      <span class="sidebar-right-title">Developers</span>
+      <ul class="dev-links">
+        <% it.developers.forEach(function(dev) { %>
+          <li>
+            <a href="<%= it.basePath %>developer/<%= dev.login %>/"
+               class="dev-link">
+              <img src="<%= dev.avatarUrl %>&s=32" alt="" class="dev-avatar" width="20" height="20" loading="lazy">
+              <span class="dev-login"><%= dev.login %></span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </aside>
+    <% } %>
   </div>
 </body>
 </html>

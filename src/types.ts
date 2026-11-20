@@ -61,3 +61,10 @@ export interface TimeBucketData {
   label: string;
   releases: ReleaseCardData[];
 }
+
+/** A developer extracted from release authors for the right sidebar (issue #24). */
+export interface DeveloperInfo {
+  login: string;
+  avatarUrl: string;
+  htmlUrl: string;
+}
