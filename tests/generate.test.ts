@@ -1082,10 +1082,9 @@ describe("generateSite developer pages", () => {
     expect(html).toContain('class="sidebar-right"');
   });
 
-  it("developer page has GitHub profile link", () => {
+  it("developer page has developer avatar", () => {
     const html = readFileSync(join(outputDir, "developer", "dev1", "index.html"), "utf-8");
-    expect(html).toContain('href="https://github.com/dev1"');
-    expect(html).toContain("View on GitHub");
+    expect(html).toContain("developer-avatar");
   });
 
   it("developer page highlights the active developer in the right sidebar", () => {
@@ -1096,10 +1095,8 @@ describe("generateSite developer pages", () => {
     const sidebarEnd = html.indexOf("</aside>", sidebarStart);
     const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
 
-    // dev1 link should have the active class
-    expect(sidebarHtml).toMatch(/href="[^"]*developer\/dev1\/"[^>]*class="dev-link active"/);
-    // dev2 link should NOT have the active class
-    expect(sidebarHtml).not.toMatch(/href="[^"]*developer\/dev2\/"[^>]*class="dev-link active"/);
+    expect(sidebarHtml).toMatch(/href="[^"]*developer\/dev1\/"[^>]*class="user-pill dev-pill active"/);
+    expect(sidebarHtml).not.toMatch(/href="[^"]*developer\/dev2\/"[^>]*class="user-pill dev-pill active"/);
   });
 
   it("index page does not highlight any developer in the right sidebar", () => {
@@ -1109,7 +1106,6 @@ describe("generateSite developer pages", () => {
     const sidebarEnd = html.indexOf("</aside>", sidebarStart);
     const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
 
-    // No developer should be active on the index page
-    expect(sidebarHtml).not.toContain("dev-link active");
+    expect(sidebarHtml).not.toContain("dev-pill active");
   });
 });

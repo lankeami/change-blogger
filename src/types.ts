@@ -65,6 +65,7 @@ export interface TimeBucketData {
 /** A developer extracted from release authors for the right sidebar (issue #24). */
 export interface DeveloperInfo {
   login: string;
+  name: string | null;
   avatarUrl: string;
   htmlUrl: string;
 }
