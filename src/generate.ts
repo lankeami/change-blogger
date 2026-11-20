@@ -14,7 +14,7 @@ import {
 } from "./render.js";
 import type { SiteData, Release, ReleaseCardData, TimeBucketData, DeveloperInfo } from "./types.js";
 import { writeFeedFiles } from "./feed.js";
-import { createUserCache, type UserFetcher } from "./users.js";
+import { createUserCache, createGithubUserFetcher, type UserFetcher } from "./users.js";
 
 export interface MarkdownReportOptions {
   dataPath: string;
@@ -30,15 +30,20 @@ const BUCKET_LABELS: Record<TimeBucket, string> = {
 };
 
 /** Extract unique developers from releases, sorted alphabetically by login. */
-export function extractDevelopers(releases: Release[]): DeveloperInfo[] {
+export function extractDevelopers(
+  releases: Release[],
+  resolveUser?: ResolveUser,
+): DeveloperInfo[] {
   const seen = new Map<string, DeveloperInfo>();
   for (const release of releases) {
     const key = release.author.login.toLowerCase();
     if (!seen.has(key)) {
+      const resolved = resolveUser?.(release.author.login);
       seen.set(key, {
         login: release.author.login,
-        avatarUrl: release.author.avatarUrl,
-        htmlUrl: release.author.htmlUrl,
+        name: resolved?.name ?? null,
+        avatarUrl: resolved?.avatarUrl || release.author.avatarUrl,
+        htmlUrl: resolved?.htmlUrl || release.author.htmlUrl,
       });
     }
   }
@@ -114,8 +119,23 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
     );
 
+  // --- User cache for developer names ---
+  const usersPath = options.usersPath ?? join(dirname(dataPath), "users.json");
+  const cache = createUserCache({
+    cachePath: usersPath,
+    fetcher: options.userFetcher,
+  });
+
+  for (const release of allReleases) {
+    cache.seed(release.author);
+    await cache.resolve(release.author.login);
+  }
+  cache.save();
+
+  const resolveUser: ResolveUser = (login) => cache.getSync(login);
+
   // --- Developers list for right sidebar (issue #24) ---
-  const developers = extractDevelopers(allReleases);
+  const developers = extractDevelopers(allReleases, resolveUser);
 
   const bucketMap = new Map<TimeBucket, ReleaseCardData[]>();
   for (const bucket of BUCKET_ORDER) {
@@ -172,8 +192,13 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
     const devDir = join(outputDir, "developer", dev.login);
     mkdirSync(devDir, { recursive: true });
 
+    const loginLower = dev.login.toLowerCase();
     const devReleases = allReleases
-      .filter((r) => r.author.login.toLowerCase() === dev.login.toLowerCase())
+      .filter((r) => {
+        if (r.author.login.toLowerCase() === loginLower) return true;
+        const bodyLower = r.body.toLowerCase();
+        return bodyLower.includes("@" + loginLower);
+      })
       .map((r) => toCardData(r, now));
 
     const devHtml = renderer.renderPage("developer", {
@@ -186,7 +211,7 @@ export async function generateSite(options: GenerateOptions): Promise<void> {
       activeDeveloper: dev.login,
       developer: {
         login: dev.login,
-        name: null,
+        name: dev.name,
         avatarUrl: dev.avatarUrl,
         htmlUrl: dev.htmlUrl,
       },
@@ -287,6 +312,8 @@ export async function generateReport(options: GenerateOptions): Promise<void> {
       releases: repo.releases.map((r) => toCardData(r, now, resolveUser)),
     }));
 
+  const developers = extractDevelopers(allReleases, resolveUser);
+
   const css = readFileSync(join(templatesDir, "style.css"), "utf-8");
 
   mkdirSync(outputDir, { recursive: true });
@@ -296,6 +323,7 @@ export async function generateReport(options: GenerateOptions): Promise<void> {
     generatedAt: siteData.generatedAt,
     css,
     repos: repoList,
+    developers,
     buckets,
     repoSections,
   });
@@ -396,6 +424,7 @@ async function main(): Promise<void> {
     templatesDir: resolve(projectRoot, "templates"),
     siteTitle: config.siteTitle,
     siteUrl: config.siteUrl,
+    userFetcher: createGithubUserFetcher(config.githubToken),
   });
 }
 

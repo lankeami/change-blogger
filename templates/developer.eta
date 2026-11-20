@@ -1,9 +1,11 @@
 <header class="developer-header">
   <div class="developer-profile">
-    <img src="<%= it.developer.avatarUrl %>&s=80" alt="" class="developer-avatar" width="48" height="48">
+    <img src="<%= it.developer.avatarUrl %>&s=128" alt="" class="developer-avatar" width="72" height="72">
     <div>
       <h1 class="page-heading"><%= it.developer.name || it.developer.login %></h1>
-      <a href="<%= it.developer.htmlUrl %>" class="github-link">View on GitHub &rarr;</a>
+      <% if (it.developer.name) { %>
+        <p class="developer-login"><%= it.developer.login %></p>
+      <% } %>
     </div>
   </div>
 </header>

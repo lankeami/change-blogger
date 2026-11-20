@@ -99,24 +99,99 @@
             </div>
           </section>
         <% }) %>
+        <% if (it.developers && it.developers.length > 0) { %>
+          <% it.developers.forEach(function(dev) { %>
+            <section id="dev-<%= dev.login %>" class="report-section" style="display: none">
+              <header class="developer-header">
+                <div class="developer-profile">
+                  <img src="<%= dev.avatarUrl %>&s=128" alt="" class="developer-avatar" width="72" height="72">
+                  <div>
+                    <h1 class="page-heading"><%= dev.name || dev.login %></h1>
+                    <% if (dev.name) { %>
+                      <p class="developer-login"><%= dev.login %></p>
+                    <% } %>
+                  </div>
+                </div>
+              </header>
+              <div class="releases-list">
+                <% it.buckets.forEach(function(bucket) { %>
+                  <% bucket.releases.forEach(function(release) { %>
+                    <% var devLower = dev.login.toLowerCase();
+                       var isAuthor = release.author.login.toLowerCase() === devLower;
+                       var bodyLower = release.bodyHtml ? release.bodyHtml.toLowerCase() : '';
+                       var isMentioned = bodyLower.indexOf('data-login="' + devLower + '"') !== -1 || bodyLower.indexOf('@' + devLower) !== -1;
+                       if (isAuthor || isMentioned) { %>
+                      <article class="release-card">
+                        <div class="release-header">
+                          <a href="#<%= release.repoName %>" class="repo-badge"><%= release.repoName %></a>
+                          <span class="release-tag"><%= release.tagName %></span>
+                          <time class="release-date" datetime="<%= release.publishedAt %>"><%= release.relativeDate %></time>
+                        </div>
+                        <h3 class="release-name">
+                          <a href="<%= release.htmlUrl %>" target="_blank" rel="noopener noreferrer"><%= release.name || release.tagName %></a>
+                        </h3>
+                        <div class="release-meta">
+                          <%~ release.authorPillHtml %>
+                        </div>
+                        <% if (release.bodyHtml) { %>
+                          <div class="release-body"><%~ release.bodyHtml %></div>
+                        <% } %>
+                      </article>
+                    <% } %>
+                  <% }) %>
+                <% }) %>
+              </div>
+            </section>
+          <% }) %>
+        <% } %>
       </main>
       <footer class="site-footer">
         <p>Generated at <%= it.generatedAt %></p>
       </footer>
     </div>
+    <% if (it.developers && it.developers.length > 0) { %>
+    <aside class="sidebar-right">
+      <span class="sidebar-right-title">Developers</span>
+      <ul class="dev-links">
+        <% it.developers.forEach(function(dev) { %>
+          <li>
+            <a href="#dev:<%= dev.login %>" class="user-pill dev-pill" data-dev="<%= dev.login %>">
+              <img class="user-pill-avatar" src="<%= dev.avatarUrl %>&s=32" alt="" width="16" height="16" loading="lazy">
+              <span class="user-pill-text"><%= dev.name || dev.login %></span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </aside>
+    <% } %>
   </div>
   <script>
     (function() {
       var sections = document.querySelectorAll('.report-section');
       var navLinks = document.querySelectorAll('.nav-links a');
+      var devLinks = document.querySelectorAll('.dev-pill');
 
       function showSection(hash) {
         var target = hash ? hash.replace('#', '') : '';
 
         sections.forEach(function(s) { s.style.display = 'none'; });
         navLinks.forEach(function(a) { a.classList.remove('active'); });
+        devLinks.forEach(function(a) { a.classList.remove('active'); });
 
         if (target) {
+          // Developer section: hash is "dev:login"
+          if (target.indexOf('dev:') === 0) {
+            var login = target.slice(4);
+            var devSection = document.getElementById('dev-' + login);
+            if (devSection) {
+              devSection.style.display = '';
+              devLinks.forEach(function(a) {
+                if (a.getAttribute('data-dev') === login) a.classList.add('active');
+              });
+              return;
+            }
+          }
+
           var repoSection = document.getElementById('repo-' + target);
           if (repoSection) {
             repoSection.style.display = '';
@@ -130,7 +205,7 @@
       }
 
       window.addEventListener('hashchange', function() {
-        // Clear search when navigating to a repo section
+        // Clear search when navigating away
         var searchInput = document.getElementById('search-input');
         if (searchInput) { searchInput.value = ''; performSearch(''); }
         showSection(window.location.hash);

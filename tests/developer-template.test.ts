@@ -89,10 +89,9 @@ describe("developer.eta template", () => {
     expect(html).toMatch(/<h1[^>]*class="page-heading"[^>]*>.*octocat/s);
   });
 
-  it("renders a GitHub profile link in the header", () => {
+  it("renders the developer avatar in the header", () => {
     const html = renderDeveloperPage({ developer, releases });
-    expect(html).toContain('href="https://github.com/octocat"');
-    expect(html).toContain("View on GitHub");
+    expect(html).toContain("developer-avatar");
   });
 
   it("wraps the header in a developer-header element", () => {
@@ -170,8 +169,7 @@ describe("developer.eta template", () => {
     const sidebarEnd = html.indexOf("</aside>", sidebarStart);
     const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
 
-    // The active developer link should have both dev-link and active classes
-    expect(sidebarHtml).toMatch(/href="[^"]*developer\/octocat\/"[^>]*class="dev-link active"/);
+    expect(sidebarHtml).toMatch(/href="[^"]*developer\/octocat\/"[^>]*class="user-pill dev-pill active"/);
   });
 
   it("does not highlight non-active developers in the right sidebar", () => {
@@ -189,8 +187,7 @@ describe("developer.eta template", () => {
     const sidebarEnd = html.indexOf("</aside>", sidebarStart);
     const sidebarHtml = html.slice(sidebarStart, sidebarEnd);
 
-    // alice's link should NOT have the active class
-    expect(sidebarHtml).toMatch(/href="[^"]*developer\/alice\/"[^>]*class="dev-link"[^"]*>/);
-    expect(sidebarHtml).not.toMatch(/href="[^"]*developer\/alice\/"[^>]*class="dev-link active"/);
+    expect(sidebarHtml).toMatch(/href="[^"]*developer\/alice\/"[^>]*class="user-pill dev-pill"[^"]*>/);
+    expect(sidebarHtml).not.toMatch(/href="[^"]*developer\/alice\/"[^>]*class="user-pill dev-pill active"/);
   });
 });
